@@ -7,7 +7,7 @@
 		<Option compiler="gcc" />
 		<Build>
 			<Target title="Debug">
-				<Option output="bin/Debug/berserker" prefix_auto="1" extension_auto="1" />
+				<Option output="bin/Debug/berserkerq2" prefix_auto="0" extension_auto="1" />
 				<Option object_output="obj/Debug/" />
 				<Option type="0" />
 				<Option compiler="gcc" />
@@ -16,32 +16,29 @@
 				</Compiler>
 			</Target>
 			<Target title="Release">
-				<Option output="bin/Release/berserker" prefix_auto="1" extension_auto="1" />
+				<Option output="bin/Release/berserkerq2" prefix_auto="0" extension_auto="1" />
 				<Option object_output="obj/Release/" />
 				<Option type="0" />
 				<Option compiler="gcc" />
 				<Compiler>
-					<Add option="-O2" />
+					<Add option="-O3" />
+					<Add option="-fno-strict-aliasing" />
 					<Add option="-DNDEBUG" />
 				</Compiler>
-				<Linker>
-					<Add option="-s" />
-				</Linker>
 			</Target>
 		</Build>
 		<Compiler>
 			<Add option="-Wall" />
-			<Add option="-m32" />
 		</Compiler>
 		<Linker>
-			<Add option="-m32" />
 			<Add option="-lm" />
 			<Add option="-lGL" />
 			<Add option="-lvorbis" />
 			<Add option="-lvorbisfile" />
 			<Add option="-lz" />
+			<Add option="-lminizip" />
 			<Add option="-lSDL2" />
-			<Add option="-lpng12" />
+			<Add option="-lpng" />
 			<Add option="-ljpeg" />
 		</Linker>
 		<Unit filename="anorms.h" />
@@ -58,10 +55,8 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="unpak.h" />
-		<Unit filename="unzip.c">
 			<Option compilerVar="CC" />
 		</Unit>
-		<Unit filename="unzip.h" />
 		<Unit filename="warpsin.h" />
 		<Extensions>
 			<code_completion />

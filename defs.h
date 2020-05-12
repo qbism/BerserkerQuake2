@@ -22,6 +22,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 ===========================================================================
 */
 
+#ifdef __linux__
+#define _GNU_SOURCE
+#endif
 #ifdef _WIN32
 #include <windows.h>
 #include <direct.h>
@@ -39,6 +42,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <pwd.h>
+#include <sched.h>
 #endif
 #include <time.h>
 #include <math.h>
@@ -47,7 +51,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include <stdlib.h>
 #include <GL/gl.h>
 #include <GL/glext.h>
-#include <libpng12/png.h>
+#include <png.h>
 #include <SDL2/SDL.h>
 #include "unpak.h"
 #include "m_frames.h"
@@ -128,7 +132,12 @@ typedef struct cvar_s
 
 
 #define	MAX_QPATH			64		// max length of a berserker game pathname
-#define	MAX_OSPATH			128		// max length of a filesystem pathname
+
+#ifdef _WIN32
+#define MAX_OSPATH			256		// max length of a filesystem pathname (same as MAX_PATH)
+#else
+#define MAX_OSPATH			4096	// max length of a filesystem pathname
+#endif
 
 typedef struct
 {
@@ -193,117 +202,131 @@ typedef struct edict_s edict_t;
 
 #define	MAXCMDLINE	256
 
-//
-// these are the key numbers that should be passed to Key_Event
-//
-#define	K_TAB			9
-#define	K_ENTER			13
-#define	K_ESCAPE		27
-#define	K_SPACE			32
+typedef enum keynum_e
+{
+	//
+	// these are the key numbers that should be passed to Key_Event
+	//
+	K_TAB			= 9,
+	K_ENTER			= 13,
+	K_ESCAPE		= 27,
+	K_SPACE			= 32,
 
-// normal keys should be passed as lowercased ascii
-#define	K_BACKSPACE		127
-#define	K_UPARROW		128
-#define	K_DOWNARROW		129
-#define	K_LEFTARROW		130
-#define	K_RIGHTARROW	131
+	// normal keys should be passed as lowercased ascii
+	K_BACKSPACE		= 127,
+	K_UPARROW,
+	K_DOWNARROW,
+	K_LEFTARROW,
+	K_RIGHTARROW,
 
-#define	K_ALT			132
-#define	K_CTRL			133
-#define	K_SHIFT			134
-#define	K_F1			135
-#define	K_F2			136
-#define	K_F3			137
-#define	K_F4			138
-#define	K_F5			139
-#define	K_F6			140
-#define	K_F7			141
-#define	K_F8			142
-#define	K_F9			143
-#define	K_F10			144
-#define	K_F11			145
-#define	K_F12			146
-#define	K_INS			147
-#define	K_DEL			148
-#define	K_PGDN			149
-#define	K_PGUP			150
-#define	K_HOME			151
-#define	K_END			152
+	K_ALT,
+	K_CTRL,
+	K_SHIFT,
+	K_F1,
+	K_F2,
+	K_F3,
+	K_F4,
+	K_F5,
+	K_F6,
+	K_F7,
+	K_F8,
+	K_F9,
+	K_F10,
+	K_F11,
+	K_F12,
+	K_INS,
+	K_DEL,
+	K_PGDN,
+	K_PGUP,
+	K_HOME,
+	K_END,
 
-#define K_KP_HOME		160
-#define K_KP_UPARROW	161
-#define K_KP_PGUP		162
-#define	K_KP_LEFTARROW	163
-#define K_KP_5			164
-#define K_KP_RIGHTARROW	165
-#define K_KP_END		166
-#define K_KP_DOWNARROW	167
-#define K_KP_PGDN		168
-#define	K_KP_ENTER		169
-#define K_KP_INS   		170
-#define	K_KP_DEL		171
-#define K_KP_SLASH		172
-#define K_KP_MINUS		173
-#define K_KP_PLUS		174
+	K_KP_HOME		= 160,
+	K_KP_UPARROW,
+	K_KP_PGUP,
+	K_KP_LEFTARROW,
+	K_KP_5,
+	K_KP_RIGHTARROW,
+	K_KP_END,
+	K_KP_DOWNARROW,
+	K_KP_PGDN,
+	K_KP_ENTER,
+	K_KP_INS,
+	K_KP_DEL,
+	K_KP_SLASH,
+	K_KP_MINUS,
+	K_KP_PLUS,
 
-#define K_PAUSE			255
+	//
+	// mouse buttons generate virtual keys
+	//
+	K_MOUSE1		= 200,
+	K_MOUSE3,
+	K_MOUSE2,
+	K_MOUSE4,
+	K_MOUSE5,
+	K_MOUSE6,
+	K_MOUSE7,
+	K_MOUSE8,
+	K_MOUSE9,
+	K_MOUSE10,
+	K_MOUSE11,
+	K_MOUSE12,
+	K_MOUSE13,
+	K_MOUSE14,
+	K_MOUSE15,
+	K_MOUSE16,
 
-//
-// mouse buttons generate virtual keys
-//
-#define	K_MOUSE1		200
-#define	K_MOUSE2		201
-#define	K_MOUSE3		202
-#define K_MOUSE4		203
-#define K_MOUSE5		204
+	//
+	// joystick buttons
+	//
+	K_JOY1,
+	K_JOY2,
+	K_JOY3,
+	K_JOY4,
 
-//
-// joystick buttons
-//
-#define	K_JOY1			203
-#define	K_JOY2			204
-#define	K_JOY3			205
-#define	K_JOY4			206
+	//
+	// aux keys are for multi-buttoned joysticks to generate so they can use
+	// the normal binding process
+	//
+	K_AUX1,
+	K_AUX2,
+	K_AUX3,
+	K_AUX4,
+	K_AUX5,
+	K_AUX6,
+	K_AUX7,
+	K_AUX8,
+	K_AUX9,
+	K_AUX10,
+	K_AUX11,
+	K_AUX12,
+	K_AUX13,
+	K_AUX14,
+	K_AUX15,
+	K_AUX16,
+	K_AUX17,
+	K_AUX18,
+	K_AUX19,
+	K_AUX20,
+	K_AUX21,
+	K_AUX22,
+	K_AUX23,
+	K_AUX24,
+	K_AUX25,
+	K_AUX26,
+	K_AUX27,
+	K_AUX28,
+	K_AUX29,
+	K_AUX30,
+	K_AUX31,
+	K_AUX32,
 
-//
-// aux keys are for multi-buttoned joysticks to generate so they can use
-// the normal binding process
-//
-#define	K_AUX1			207
-#define	K_AUX2			208
-#define	K_AUX3			209
-#define	K_AUX4			210
-#define	K_AUX5			211
-#define	K_AUX6			212
-#define	K_AUX7			213
-#define	K_AUX8			214
-#define	K_AUX9			215
-#define	K_AUX10			216
-#define	K_AUX11			217
-#define	K_AUX12			218
-#define	K_AUX13			219
-#define	K_AUX14			220
-#define	K_AUX15			221
-#define	K_AUX16			222
-#define	K_AUX17			223
-#define	K_AUX18			224
-#define	K_AUX19			225
-#define	K_AUX20			226
-#define	K_AUX21			227
-#define	K_AUX22			228
-#define	K_AUX23			229
-#define	K_AUX24			230
-#define	K_AUX25			231
-#define	K_AUX26			232
-#define	K_AUX27			233
-#define	K_AUX28			234
-#define	K_AUX29			235
-#define	K_AUX30			236
-#define	K_AUX31			237
-#define	K_AUX32			238
+	K_MWHEELDOWN,
+	K_MWHEELUP,
 
-#define K_MWHEELDOWN	239
-#define K_MWHEELUP		240
+	K_PAUSE			= 255
+} keynum_t;
 
 
 typedef struct
@@ -322,7 +345,7 @@ typedef enum
 	ca_active			// game views should be displayed
 } connstate_t;
 
-typedef enum {key_game, key_console, key_message, key_menu, key_get} keydest_t;
+typedef enum {key_game, key_console, key_message, key_menu} keydest_t;
 
 #define	PORT_ANY	-1
 
@@ -390,7 +413,8 @@ typedef struct
 
 ///	int			framecount;		// not used?
 	int			realtime;			// always increasing, no clamping, etc
-	float		frametime;			// seconds since last frame
+	float		netFrameTime;		// seconds since last packet frame
+	float		renderFrameTime;	// seconds since last refresh frame
 
 // screen rendering information
 	float		disable_screen;		// showing loading plaque between levels
@@ -408,6 +432,8 @@ typedef struct
 	int			serverProtocol;		// in case we are doing some kind of version hack
 
 	int			challenge;			// from the server to use for connecting
+
+	bool		forcePacket;		// forces a packet to be sent the next frame
 
 	FILE		*download;			// file transfer from server
 	char		downloadtempname[MAX_OSPATH];
@@ -446,7 +472,7 @@ typedef struct cmdalias_s
 #define	CVAR_LATCH		16	// save changes until server restart
 #define	CVAR_VID_LATCH	32	// save changes until videosystem restart
 
-#define	WINDOW_CLASS_NAME	"Berserker"
+#define	WINDOW_CLASS_NAME	"BerserkerQ2"
 #define	BASEDIRNAME		"baseq2"
 
 #define	NUM_CON_TIMES 4
@@ -1157,7 +1183,8 @@ typedef struct
 	bool		texshaders;
 	bool		vbo;
 	bool		vp;					// true - vertex programs ENABLED
-	bool		wgl_swap_control_tear;
+	bool		gl_swap_control;
+	bool		gl_swap_control_tear;
 	int			occlusion;
 	bool		arb_multisample;
 	bool		nv_multisample_hint;
@@ -1958,11 +1985,36 @@ typedef struct
 } server_t;
 
 
-#ifdef NDEBUG
-#define BUILDSTRING "Win32 RELEASE"
+#if defined(__GNUC__)
+# if defined(__i386__)
+#  define BERS_ARCH_STR		"686"
+# elif defined(__x86_64__)
+#  define BERS_ARCH_STR		"x86_64"
+# endif
+#elif defined(_WIN64)
+# define BERS_ARCH_STR		"x86_64"
+#elif defined(_WIN32)
+# define BERS_ARCH_STR		"x86"
 #else
-#define BUILDSTRING "Win32 DEBUG"
+# define BERS_ARCH_STR		"unknown"
 #endif
+
+#if defined(__linux__)
+# define BERS_OS_STR		"Linux"
+#elif defined(_WIN64)
+# define BERS_OS_STR		"Win64"
+#elif defined(_WIN32)
+# define BERS_OS_STR		"Win32"
+#else
+# define BERS_OS_STR		"Unknown"
+#endif
+
+#ifdef NDEBUG
+#define BUILDSTRING BERS_OS_STR " Release"
+#else
+#define BUILDSTRING BERS_OS_STR " Debug"
+#endif
+
 
 //
 // functions exported by the game subsystem
@@ -2023,6 +2075,7 @@ typedef struct
 } game_export_t;
 
 #define	FRAMETIME		0.1
+#define FRAMETIME_MAX	0.5
 
 #define	PORT_CLIENT				27971	/// my client port
 #define	PORT_SERVER				27980	/// my server port
@@ -2508,8 +2561,8 @@ typedef struct
 {
 	int			channels;
 	int			samples;				// mono samples in buffer
-	int			submission_chunk;		// don't mix less than this #
 	int			samplepos;				// in mono samples
+	int			samplebits;
 	int			speed;
 	byte		*buffer;
 } dma_t;
@@ -2753,7 +2806,7 @@ typedef struct
 // (type *)STRUCT_FROM_LINK(link_t *link, type, member)
 // ent = STRUCT_FROM_LINK(link,entity_t,order)
 // FIXME: remove this mess!
-#define	STRUCT_FROM_LINK(l,t,m) ((t *)((byte *)l - (int)&(((t *)0)->m)))
+#define	STRUCT_FROM_LINK(l,t,m) ((t *)((byte *)l - (byte *)&(((t *)NULL)->m)))
 
 #define	EDICT_FROM_AREA(l) STRUCT_FROM_LINK(l,edict_t,area)
 
@@ -4024,7 +4077,7 @@ typedef struct
 #define	SIDE_ON		2
 
 /* MD4 context. */
-typedef unsigned long int UINT4;
+typedef unsigned int UINT4;
 typedef struct
 {
 	UINT4	state[4];				/* state (ABCD) */

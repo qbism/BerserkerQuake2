@@ -70,41 +70,51 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <IncludePath>..\include;$(IncludePath)</IncludePath>
-    <LibraryPath>..\lib;$(LibraryPath)</LibraryPath>
+    <LibraryPath>..\lib\x86;$(LibraryPath)</LibraryPath>
+    <TargetName>berserkerq2</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <IncludePath>..\include;$(IncludePath)</IncludePath>
-    <LibraryPath>..\lib;$(LibraryPath)</LibraryPath>
+    <LibraryPath>..\lib\x86;$(LibraryPath)</LibraryPath>
+    <LinkIncremental>false</LinkIncremental>
+    <TargetName>berserkerq2</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <IncludePath>..\include;$(IncludePath)</IncludePath>
-    <LibraryPath>..\lib;$(LibraryPath)</LibraryPath>
+    <LibraryPath>..\lib\x64;$(LibraryPath)</LibraryPath>
+    <TargetName>berserkerq2</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <IncludePath>..\include;$(IncludePath)</IncludePath>
-    <LibraryPath>..\lib;$(LibraryPath)</LibraryPath>
+    <LibraryPath>..\lib\x64;$(LibraryPath)</LibraryPath>
+    <LinkIncremental>false</LinkIncremental>
+    <TargetName>berserkerq2</TargetName>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <SDLCheck>false</SDLCheck>
-      <PreprocessorDefinitions>ZLIB_WINAPI;_MBCS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>ZLIB_DLL;_MBCS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <BufferSecurityCheck>false</BufferSecurityCheck>
+      <DisableSpecificWarnings>4305;4309; 4244;4018;4551;4116;4146;4800;4996</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
-      <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
+      <AdditionalDependencies>jpeg8.lib;libpng16.lib;libvorbisfile.lib;zlib.lib;opengl32.lib;ws2_32.lib;sdl2.lib;sdl2main.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <SDLCheck>false</SDLCheck>
-      <PreprocessorDefinitions>ZLIB_WINAPI;_MBCS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>ZLIB_DLL;_MBCS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <BufferSecurityCheck>false</BufferSecurityCheck>
+      <DisableSpecificWarnings>4305;4309; 4244;4018;4551;4116;4146;4800;4996</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
+      <StackReserveSize>2097152</StackReserveSize>
+      <AdditionalDependencies>jpeg8.lib;libpng16.lib;libvorbisfile.lib;zlib.lib;opengl32.lib;ws2_32.lib;sdl2.lib;sdl2main.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -113,14 +123,21 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <SDLCheck>false</SDLCheck>
-      <PreprocessorDefinitions>ZLIB_WINAPI;NDEBUG;_MBCS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>ZLIB_DLL;NDEBUG;_MBCS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <DebugInformationFormat>None</DebugInformationFormat>
+      <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
+      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+      <OmitFramePointers>true</OmitFramePointers>
+      <StringPooling>true</StringPooling>
+      <BufferSecurityCheck>false</BufferSecurityCheck>
+      <DisableSpecificWarnings>4305;4309; 4244;4018;4551;4116;4146;4800;4996</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <SubSystem>Windows</SubSystem>
-      <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
+      <GenerateDebugInformation>false</GenerateDebugInformation>
+      <AdditionalDependencies>jpeg8.lib;libpng16.lib;libvorbisfile.lib;zlib.lib;opengl32.lib;ws2_32.lib;sdl2.lib;sdl2main.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -129,13 +146,22 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <SDLCheck>false</SDLCheck>
-      <PreprocessorDefinitions>ZLIB_WINAPI;NDEBUG;_MBCS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>ZLIB_DLL;NDEBUG;_MBCS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <DebugInformationFormat>None</DebugInformationFormat>
+      <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
+      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+      <OmitFramePointers>true</OmitFramePointers>
+      <StringPooling>true</StringPooling>
+      <BufferSecurityCheck>false</BufferSecurityCheck>
+      <DisableSpecificWarnings>4305;4309; 4244;4018;4551;4116;4146;4800;4996</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>false</GenerateDebugInformation>
+      <StackReserveSize>2097152</StackReserveSize>
+      <AdditionalDependencies>jpeg8.lib;libpng16.lib;libvorbisfile.lib;zlib.lib;opengl32.lib;ws2_32.lib;sdl2.lib;sdl2main.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -147,14 +173,12 @@
     <ClInclude Include="..\m_frames.h" />
     <ClInclude Include="..\q2pal.h" />
     <ClInclude Include="..\unpak.h" />
-    <ClInclude Include="..\unzip.h" />
     <ClInclude Include="..\warpsin.h" />
     <ClInclude Include="resource.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\main.c" />
     <ClCompile Include="..\unpak.c" />
-    <ClCompile Include="..\unzip.c" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="Berserker.rc" />

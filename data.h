@@ -96,7 +96,6 @@ char	*keybindings[256];
 int		anykeydown;
 bool	keydown[256];
 int		key_repeats[256];	// if > 1, it is autorepeating
-int		key_waiting;
 int		shift_down=false;
 
 sizebuf_t	cmd_text;
@@ -142,8 +141,21 @@ keyname_t keynames[] =
 	{"MOUSE1", K_MOUSE1},
 	{"MOUSE2", K_MOUSE2},
 	{"MOUSE3", K_MOUSE3},
-        {"MOUSE4", K_MOUSE4},	/// added by Willow: new mouse support
-        {"MOUSE5", K_MOUSE5},	/// added by Willow: new mouse support
+	/// added by Willow: new mouse support
+	{"MOUSE4", K_MOUSE4},
+	{"MOUSE5", K_MOUSE5},
+	// UCyborg: more mouse buttons!
+	{"MOUSE6", K_MOUSE6},
+	{"MOUSE7", K_MOUSE7},
+	{"MOUSE8", K_MOUSE8},
+	{"MOUSE9", K_MOUSE9},
+	{"MOUSE10", K_MOUSE10},
+	{"MOUSE11", K_MOUSE11},
+	{"MOUSE12", K_MOUSE12},
+	{"MOUSE13", K_MOUSE13},
+	{"MOUSE14", K_MOUSE14},
+	{"MOUSE15", K_MOUSE15},
+	{"MOUSE16", K_MOUSE16},
 
 	{"JOY1", K_JOY1},
 	{"JOY2", K_JOY2},
@@ -253,7 +265,6 @@ bool	drawing_sky_world;
 cvar_t	*cv_reset;
 cvar_t	*s_music;
 cvar_t	*s_musicVolume;
-cvar_t	*sys_cpu;
 cvar_t	*sys_username;
 cvar_t	*scr_drawclock;
 cvar_t	*scr_draw2d;
@@ -396,15 +407,7 @@ cvar_t	*hud_overbright;
 cvar_t	*crosshair;
 cvar_t	*scr_crosshair_scale;
 cvar_t	*cl_nodelta;
-cvar_t	*adr0;
-cvar_t	*adr1;
-cvar_t	*adr2;
-cvar_t	*adr3;
-cvar_t	*adr4;
-cvar_t	*adr5;
-cvar_t	*adr6;
-cvar_t	*adr7;
-cvar_t	*adr8;
+cvar_t	*adr[NUM_ADDRESSBOOK_ENTRIES];
 
 cvar_t	*dl_shell;
 cvar_t	*dl_rocket;
@@ -426,6 +429,9 @@ cvar_t	*cl_noskins;
 cvar_t	*cl_predict;
 cvar_t	*cl_maxfps;
 cvar_t	*con_maxfps;
+cvar_t	*cl_async;
+cvar_t	*net_maxfps;
+cvar_t	*r_maxfps;
 cvar_t	*cl_sleep;
 
 cvar_t	*cl_forcemymodel;
@@ -468,6 +474,7 @@ cvar_t	*msg;
 cvar_t	*hand;
 cvar_t	*fov;
 cvar_t	*zoomfov;
+cvar_t	*zoomspeed;
 cvar_t	*gender;					/// тут пол игрока, в норм. условиях д.б. male, female или none
 char	gender_model[MAX_QPATH];		/// тут храним модель игрока
 model_t	*gender_mdl;
@@ -705,10 +712,12 @@ HANDLE	hinput, houtput;
 
 FILE	*logfile;
 
-bool	mouseactive;	// false when not focus app
+// used to restore mouse cursor position when switching from relative mouse mode
+#if SDL_VERSION_ATLEAST(2,0,4)
+int		mouse_x;
+int		mouse_y;
+#endif
 
-
-int		gamma_initialized_;
 
 bool	reflib_active = false;
 
@@ -716,6 +725,10 @@ enum _ControlList
 {
 	AxisNada = 0, AxisForward, AxisLook, AxisSide, AxisTurn, AxisUp
 };
+
+DWORD	dwAxisMap[JOY_MAX_AXES];
+DWORD	dwControlMap[JOY_MAX_AXES];
+Sint16	dwRawValue[JOY_MAX_AXES];
 
 // none of these cvars are saved over a session
 // this means that advanced controller configuration needs to be executed
@@ -741,14 +754,12 @@ cvar_t	*joy_yawsensitivity;
 cvar_t	*joy_upthreshold;
 cvar_t	*joy_upsensitivity;
 
-bool	joy_avail, joy_advancedinit, joy_haspov;
-/*DWORD	joy_oldbuttonstate, joy_oldpovstate;
+bool	joy_advancedinit;
+DWORD	joy_oldbuttonstate, joy_oldhatstate;
 
-int			joy_id;
-DWORD		joy_flags;
-DWORD		joy_numbuttons;
-
-static JOYINFOEX	ji;*/
+SDL_Joystick	*joy;
+int			joy_numbuttons;
+int			joy_numhats;
 
 vec3_t vec3_origin = {0,0,0};
 
@@ -998,7 +1009,7 @@ image_t	*draw_default;
 image_t	*draw_mapshot = NULL;
 char	saved_shot_dir[16];			// NULL, 'quick', 'save*'
 
-int			ip_sockets[2];
+int			ip_sockets[2] = { -1, -1 };
 
 centity_t	cl_entities[MAX_EDICTS];
 
@@ -1273,7 +1284,7 @@ bool		credits_backgroundFile = false;
 //глобальные переменные для буферизованой подгрузки ogg
 byte			*ogg_file_buffer = NULL;
 unsigned		ogg_file_buffer_size = 0;
-unsigned long	ogg_file_buffer_pos = 0;
+unsigned		ogg_file_buffer_pos = 0;
 
 channel_t   channels[MAX_CHANNELS];
 
@@ -1622,6 +1633,7 @@ menuaction_s		s_options_defaults_action;
 menuaction_s		s_options_customize_options_action;
 menuaction_s		s_options_customize2_options_action;
 menuslider_s		s_options_sensitivity_slider;
+menuslider_s		s_options_zoomspeed_slider;
 menulist_s			s_options_freelook_box;
 menulist_s			s_options_joystick_box;
 menulist_s			s_options_alwaysrun_box;
@@ -2065,6 +2077,7 @@ const char *quality_items[] =
 	"low",
 	"medium",
 	"high",
+	"highest",
 	0
 };
 
@@ -2948,23 +2961,8 @@ int			start_clock;
 
 bool		light_used, shadow_used;
 
-#ifdef ENABLE_ASM
-void		(*Memcpy)(void *, const void *, size_t);
-void		(*Memset)(void *, const int, size_t);
-#else
-#define Memcpy memcpy
-#define Memset memset
-#define Com_Memcmp memcmp
-#endif
 float		(*Sqrt)(float);
 ///float		(*Sin)(float);
-
-bool		cpu_mmx;
-bool		cpu_mmxe;
-bool		cpu_3dnow;
-bool		cpu_3dnowe;
-bool		cpu_sse;
-bool		cpu_sse2;
 
 unsigned	hashes[MAX_SPEC_TEXTURES];
 unsigned	hashLaserBolt[3];
@@ -2983,8 +2981,6 @@ int			r_using_burning = 0;
 int			r_using_pain = 0;
 int			r_using_pain_frame;
 int			r_using_drown = 0;
-
-int			NumberOfProcessors = 1;
 
 
 bool						vc_initialised = false;
@@ -3111,12 +3107,6 @@ bool Ent_MirrorClip(float *mins, float *maxs);
 void R_LightForPoint (vec3_t point, vec3_t color);
 void Create_Demosstrings (int mask);
 void CreateShadowVBO();
-void MMX_Memcpy8B( void *dest, const void *src, size_t count );
-void MMX_Memcpy64B( void *dest, const void *src, size_t count );
-void MMX_Memcpy2kB( void *dest, const void *src, size_t count );
-void MMX_Memcpy( void *dest0, const void *src0, size_t count0 );
-void AMD_Memcpy( void *dest, const void *src, size_t n );
-void MMX_Memset( void* dest0, const int val, const size_t count0 );
 void TraceDecal();
 bool R_MarkAliasLeaves(alink_t *alias);
 bool CM_AreasConnected (int area1, int area2);
@@ -3229,6 +3219,7 @@ void ToggleMuteFocusFunc( void *unused );
 void UpdateVolumeFunc( void *unused );
 void UpdateSoundQualityFunc( void *unused );
 void MouseSpeedFunc( void *unused );
+void ZoomSpeedFunc( void *unused );
 void AlwaysRunFunc( void *unused );
 void InvertMouseFunc( void *unused );
 void LookspringFunc( void *unused );
@@ -3297,7 +3288,6 @@ void R_SaveRenderState();
 void R_RestoreRenderState();
 void Draw_PicSized(int x, int y, float sx, float sy, char *pic);
 void KeyUp (kbutton_t *b);
-void ClearKeys();
 void BeginFrame();
 void End_Frame();
 void Info_SetValueForKey (char *s, char *key, char *value);

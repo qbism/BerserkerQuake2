@@ -21,9 +21,6 @@ along with Berserker@Quake2 source code; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 ===========================================================================
 */
-#ifdef _MSC_VER
-#pragma warning( disable: 4305 4309 4244 4018 4551 4116 4146 4800 4996)
-#endif
 
 /// Berserker: при добавлении библиотеки OGG Vorbis, я столкнулся с проблемой порчи памяти в Debug-проекте.
 /// Т.о. стало невозможно производить отладку.
@@ -31,17 +28,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 /// Спасибо Кирилл aka Kirk Barnes!
 /////	#pragma comment (lib, "OGG/Lib/ogg_static.lib")
 /////	#pragma comment (lib, "OGG/Lib/vorbisfile_static.lib")
-
-#ifdef _WIN32
-#pragma comment (lib, "jpeg.lib")
-#pragma comment (lib, "libpng13.lib")
-#pragma comment (lib, "libvorbisfile.lib")
-#pragma comment (lib, "zlibwapi.lib")
-#pragma comment (lib, "opengl32.lib")
-#pragma comment (lib, "wsock32.lib")
-#pragma comment (lib, "SDL2.lib")
-#pragma comment (lib, "SDL2main.lib")
-#endif
 
 #include "defs.h"
 #include "data.h"
@@ -65,36 +51,7 @@ char *strlwr(char *str)
 
 void SinCos( float radians, float *sine, float *cosine )
 {
-#ifdef ENABLE_ASM
-#ifdef _MSC_VER
-	_asm
-	{
-		fld	dword ptr [radians]
-		fsincos
-
-		mov edx, dword ptr [cosine]
-		mov eax, dword ptr [sine]
-
-		fstp dword ptr [edx]
-		fstp dword ptr [eax]
-	}
-#else
-	__asm__
-	(
-		"flds %0\n"
-		"fsincos\n"
-
-		"movl %1,%%edx\n"
-		"movl %2,%%eax\n"
-
-		"fstps (%%edx)\n"
-		"fstps (%%eax)\n"
-		:
-		: "m" (radians), "m" (cosine), "m" (sine)
-		: "%edx", "%eax"
-	);
-#endif
-#elif defined (__linux__)
+#ifdef __linux__
 	sincosf(radians, sine, cosine);
 #else
 	*sine = sinf(radians);
@@ -129,7 +86,7 @@ void *Hunk_Begin (int maxsize, char *name)
 	int l = strlen(name);
 	if (l >= MAX_OSPATH)
 		l = MAX_OSPATH - 1;
-	Memcpy(hunk_name, name, l);
+	memcpy(hunk_name, name, l);
 	hunk_name[l] = 0;
 	membase = (byte*) calloc (maxsize, 1);
 	if (!membase)
@@ -524,12 +481,12 @@ void Huff1TableInit ()
 	int		numhnodes;
 
 	cin.hnodes1 = (int*)Z_Malloc(256*256*2*4, true);
-///	Memset (cin.hnodes1, 0, 256*256*2*4);
+///	memset (cin.hnodes1, 0, 256*256*2*4);
 
 	for (prev=0 ; prev<256 ; prev++)
 	{
-		Memset (cin.h_count,0,sizeof(cin.h_count));
-		Memset (cin.h_used,0,sizeof(cin.h_used));
+		memset (cin.h_count,0,sizeof(cin.h_count));
+		memset (cin.h_used,0,sizeof(cin.h_used));
 
 		// read a row of counts
 		FS_Read (counts, sizeof(counts), cl.cinematic_file);
@@ -944,7 +901,7 @@ again:	if (!Q_strcasecmp (dot, ".pcx"))
 				}
 			}
 			else	// 32
-				Memcpy (scaled, cin.pic, cin.width*cin.height*4);
+				memcpy (scaled, cin.pic, cin.width*cin.height*4);
 
 			// ресэмплируем 32-битную текстуру
 			GL_ResampleTexture (scaled, cin.width, cin.height, trans, scaled_width, scaled_height, false);
@@ -986,13 +943,15 @@ again:	if (!Q_strcasecmp (dot, ".pcx"))
 		{
 			Z_Free(cin.pic);
 			cin.pic = (byte*)Z_Malloc(cin.width*cin.height*4, true);
-			Memcpy (cin.pic, trans, cin.width*cin.height*4);
+			memcpy (cin.pic, trans, cin.width*cin.height*4);
 		}
 
 		cl.cinematicframe = -1;
 		cl.cinematictime = 1;
 		SCR_EndLoadingPlaque ();
 		cls.state = ca_active;
+		if (cls.key_dest != key_menu)
+			cls.key_dest = key_game;
 		if (!cin.pic)
 		{
 			Com_Printf ("SCR_PlayCinematic: %s not found.\n", name);
@@ -1002,7 +961,7 @@ again:	if (!Q_strcasecmp (dot, ".pcx"))
 		{
 			if (palette)
 			{
-				Memcpy (cl.cinematicpalette, palette, sizeof(cl.cinematicpalette));
+				memcpy (cl.cinematicpalette, palette, sizeof(cl.cinematicpalette));
 				if (palette != &d_8to24table[0])
 					Z_Free (palette);
 			}
@@ -1023,6 +982,8 @@ again:	if (!Q_strcasecmp (dot, ".pcx"))
 	SCR_EndLoadingPlaque ();
 
 	cls.state = ca_active;
+	if (cls.key_dest != key_menu)
+		cls.key_dest = key_game;
 
 	FS_Read (&width, 4, cl.cinematic_file);
 	FS_Read (&height, 4, cl.cinematic_file);
@@ -1264,7 +1225,7 @@ void S_UpdateBackgroundTrack()
 			fileSamples = fileBytes / (s_backgroundInfo.width * s_backgroundInfo.channels);
 		}
 
-		Memcpy( raw, s_backgroundFile + s_backgroundFile_Start + s_backgroundFile_offset, fileBytes);
+		memcpy( raw, s_backgroundFile + s_backgroundFile_Start + s_backgroundFile_offset, fileBytes);
 		s_backgroundFile_offset += fileBytes;
 
 		// byte swap if needed
@@ -1362,7 +1323,7 @@ size_t ovc_read (void *ptr, size_t size, size_t nmemb, void *datasource)
 	if (copy_size <= 0)
 		return 0;
 	//скопируем данные по полученному указателю
-	Memcpy(ptr, &(ogg_file_buffer[ogg_file_buffer_pos]), copy_size);
+	memcpy(ptr, &(ogg_file_buffer[ogg_file_buffer_pos]), copy_size);
 	//изменим положение в буфере
 	ogg_file_buffer_pos += copy_size;
 	//возвратим количество скопированных данных
@@ -1375,13 +1336,13 @@ int ovc_seek (void *datasource, ogg_int64_t offset, int whence)
 	switch (whence)
 	{
 		case SEEK_SET:
-			ogg_file_buffer_pos = (unsigned long)offset;
+			ogg_file_buffer_pos = (unsigned)offset;
 			break;
 		case SEEK_CUR:
-			ogg_file_buffer_pos += (unsigned long)offset;
+			ogg_file_buffer_pos += (unsigned)offset;
 			break;
 		case SEEK_END:
-			ogg_file_buffer_pos = ogg_file_buffer_size + (unsigned long)offset;
+			ogg_file_buffer_pos = ogg_file_buffer_size + (unsigned)offset;
 			break;
 	}
 	//проверим выход положения за пределы буфера
@@ -1907,7 +1868,7 @@ void R_VCInit()
 	Com_Printf("Initializing VBO cache...\n");
 	vc_initialised = true;
 
-	Memset(&vcm, 0, sizeof(vcm));
+	memset(&vcm, 0, sizeof(vcm));
 
 	// setup the linked lists
 	vcm.activeVertCache.next = &vcm.activeVertCache;
@@ -1973,28 +1934,7 @@ void R_VCShutdown()
 
 static inline void Com_XOR (byte *const b, const byte num)
 {
-#ifdef ENABLE_ASM
-#ifdef _MSC_VER
-	__asm
-	{
-		mov ebx, b
-		mov al, num
-		xor [ebx], al
-	}
-#else
-	__asm__
-	(
-		"movl %0,%%ebx\n"
-		"movb %1,%%al\n"
-		"xorb %%al,(%%ebx)\n"
-		:
-		: "m" (b), "m" (num)
-		: "%ebx", "%al"
-	);
-#endif
-#else
 	*b ^= num;
-#endif
 }
 
 
@@ -2011,7 +1951,7 @@ int ZLibDecompress (byte *in, int inlen, byte *out, int outlen, int wbits)
 	z_stream zs;
 	int result;
 
-	Memset (&zs, 0, sizeof(zs));
+	memset (&zs, 0, sizeof(zs));
 
 	zs.next_in = in;
 	zs.avail_in = 0;
@@ -2088,575 +2028,6 @@ int ZLibCompressChunk(byte *in, int len_in, byte *out, int len_out, int method, 
 
 	return zs.total_out;
 }
-
-
-/// Carmack's code
-#ifdef ENABLE_ASM
-void Com_Prefetch (const void *s, const unsigned bytes/*, e_prefetch type*/)
-{
-#ifdef _MSC_VER
-	// write buffer prefetching is performed only if
-	// the processor benefits from it. Read and read/write
-	// prefetching is always performed.
-
-///	switch (type)
-///	{
-///		case PRE_WRITE:
-///			break;
-///		case PRE_READ:
-///		case PRE_READ_WRITE:
-			__asm
-			{
-				mov		ebx,s
-				mov		ecx,bytes
-				cmp		ecx,4096				// clamp to 4kB
-				jle		skipClamp
-				mov		ecx,4096
-skipClamp:
-				add		ecx,0x1f
-				shr		ecx,5					// number of cache lines
-				jz		skip
-				jmp		loopie
-
-				align 16
-loopie:			test	byte ptr [ebx],al
-				add		ebx,32
-				dec		ecx
-				jnz		loopie
-skip:
-			}
-///			break;
-///	}
-#else
-    __asm__
-    (
-        "movl %0,%%ebx\n"
-        "movl %1,%%ecx\n"
-        "cmpl $4096,%%ecx\n"
-        "jle 1f\n"
-        "movl $4096,%%ecx\n"
-
-        "1:\n"
-        "addl $0x1f,%%ecx\n"
-        "shrl $5,%%ecx\n"
-
-        "jz 3f\n"
-        "jmp 2f\n"
-        ".align 16\n"
-
-        "2:\n"
-        "testb %%al,(%%ebx)\n"
-        "addl $32,%%ebx\n"
-        "decl %%ecx\n"
-        "jnz 2b\n"
-
-        "3:\n"
-        :
-        : "m" (s), "m" (bytes)
-        : "%ebx", "%ecx"
-    );
-#endif
-}
-#endif
-
-
-/// Carmack's code
-#ifdef ENABLE_ASM
-void _copyDWord (unsigned *dest, const unsigned constant, const unsigned count)
-{
-#ifdef _MSC_VER
-	__asm
-	{
-			mov		edx,dest
-			mov		eax,constant
-			mov		ecx,count
-			and		ecx,~7
-			jz		padding
-			sub		ecx,8
-			jmp		loopu
-			align	16
-loopu:
-			test	[edx+ecx*4 + 28],ebx		// fetch next block destination to L1 cache
-			mov		[edx+ecx*4 + 0],eax
-			mov		[edx+ecx*4 + 4],eax
-			mov		[edx+ecx*4 + 8],eax
-			mov		[edx+ecx*4 + 12],eax
-			mov		[edx+ecx*4 + 16],eax
-			mov		[edx+ecx*4 + 20],eax
-			mov		[edx+ecx*4 + 24],eax
-			mov		[edx+ecx*4 + 28],eax
-			sub		ecx,8
-			jge		loopu
-padding:	mov		ecx,count
-			mov		ebx,ecx
-			and		ecx,7
-			jz		outta
-			and		ebx,~7
-			lea		edx,[edx+ebx*4]				// advance dest pointer
-			test	[edx+0],eax					// fetch destination to L1 cache
-			cmp		ecx,4
-			jl		skip4
-			mov		[edx+0],eax
-			mov		[edx+4],eax
-			mov		[edx+8],eax
-			mov		[edx+12],eax
-			add		edx,16
-			sub		ecx,4
-skip4:		cmp		ecx,2
-			jl		skip2
-			mov		[edx+0],eax
-			mov		[edx+4],eax
-			add		edx,8
-			sub		ecx,2
-skip2:		cmp		ecx,1
-			jl		outta
-			mov		[edx+0],eax
-outta:
-	}
-#else
-    __asm__
-    (
-        "movl %0,%%edx\n"
-        "movl %1,%%eax\n"
-        "movl %2,%%ecx\n"
-        "andl $0xfffffff8,%%ecx\n"
-        "jz 2f\n"
-        "subl $8,%%ecx\n"
-        "jmp 1f\n"
-        ".align 16\n"
-
-        "1:\n"
-        "testl %%ebx,28(%%edx,%%ecx,4)\n"
-        "movl %%eax,(%%edx,%%ecx,4)\n"
-        "movl %%eax,4(%%edx,%%ecx,4)\n"
-        "movl %%eax,8(%%edx,%%ecx,4)\n"
-        "movl %%eax,12(%%edx,%%ecx,4)\n"
-        "movl %%eax,16(%%edx,%%ecx,4)\n"
-        "movl %%eax,20(%%edx,%%ecx,4)\n"
-        "movl %%eax,24(%%edx,%%ecx,4)\n"
-        "movl %%eax,28(%%edx,%%ecx,4)\n"
-        "subl $8,%%ecx\n"
-        "jge 1b\n"
-
-        "2:\n"
-        "movl %2,%%ecx\n"
-        "movl %%ecx,%%ebx\n"
-        "andl $7,%%ecx\n"
-        "jz 5f\n"
-        "andl $0xfffffff8,%%ebx\n"
-        "leal (%%edx,%%ebx,4),%%edx\n"
-        "testl %%eax,(%%edx)\n"
-        "cmpl $4,%%ecx\n"
-        "jl 3f\n"
-        "movl %%eax,(%%edx)\n"
-        "movl %%eax,4(%%edx)\n"
-        "movl %%eax,8(%%edx)\n"
-        "movl %%eax,12(%%edx)\n"
-        "addl $16,%%edx\n"
-        "subl $4,%%ecx\n"
-
-        "3:\n"
-        "cmpl $2,%%ecx\n"
-        "jl 4f\n"
-        "movl %%eax,(%%edx)\n"
-        "movl %%eax,4(%%edx)\n"
-        "addl $8,%%edx\n"
-        "subl $2,%%ecx\n"
-        "4:\n"
-        "cmpl $1,%%ecx\n"
-        "jl 5f\n"
-        "movl %%eax,(%%edx)\n"
-
-        "5:\n"
-        :
-        : "m" (dest), "m" (constant), "m" (count)
-        : "%edx", "%eax", "%ecx", "%ebx"
-    );
-#endif
-}
-#endif
-
-
-/// Carmack's code
-// optimized memory copy routine that handles all alignment
-// cases and block sizes efficiently
-#ifdef ENABLE_ASM
-void Com_Memcpy (void* dest, const void* src, const size_t count)
-{
-	Com_Prefetch (src, count/*, PRE_READ*/);
-#ifdef _MSC_VER
-	__asm
-	{
-		push	edi
-		push	esi
-		mov		ecx,count
-		cmp		ecx,0						// count = 0 check (just to be on the safe side)
-		je		outta
-		mov		edx,dest
-		mov		ebx,src
-		cmp		ecx,32						// padding only?
-		jl		padding
-
-		mov		edi,ecx
-		and		edi,~31					// edi = count&~31
-		sub		edi,32
-
-		align 16
-loopMisAligned:
-		mov		eax,[ebx + edi + 0 + 0*8]
-		mov		esi,[ebx + edi + 4 + 0*8]
-		mov		[edx+edi+0 + 0*8],eax
-		mov		[edx+edi+4 + 0*8],esi
-		mov		eax,[ebx + edi + 0 + 1*8]
-		mov		esi,[ebx + edi + 4 + 1*8]
-		mov		[edx+edi+0 + 1*8],eax
-		mov		[edx+edi+4 + 1*8],esi
-		mov		eax,[ebx + edi + 0 + 2*8]
-		mov		esi,[ebx + edi + 4 + 2*8]
-		mov		[edx+edi+0 + 2*8],eax
-		mov		[edx+edi+4 + 2*8],esi
-		mov		eax,[ebx + edi + 0 + 3*8]
-		mov		esi,[ebx + edi + 4 + 3*8]
-		mov		[edx+edi+0 + 3*8],eax
-		mov		[edx+edi+4 + 3*8],esi
-		sub		edi,32
-		jge		loopMisAligned
-
-		mov		edi,ecx
-		and		edi,~31
-		add		ebx,edi					// increase src pointer
-		add		edx,edi					// increase dst pointer
-		and		ecx,31					// new count
-		jz		outta					// if count = 0, get outta here
-
-padding:
-		cmp		ecx,16
-		jl		skip16
-		mov		eax,dword ptr [ebx]
-		mov		dword ptr [edx],eax
-		mov		eax,dword ptr [ebx+4]
-		mov		dword ptr [edx+4],eax
-		mov		eax,dword ptr [ebx+8]
-		mov		dword ptr [edx+8],eax
-		mov		eax,dword ptr [ebx+12]
-		mov		dword ptr [edx+12],eax
-		sub		ecx,16
-		add		ebx,16
-		add		edx,16
-skip16:
-		cmp		ecx,8
-		jl		skip8
-		mov		eax,dword ptr [ebx]
-		mov		dword ptr [edx],eax
-		mov		eax,dword ptr [ebx+4]
-		sub		ecx,8
-		mov		dword ptr [edx+4],eax
-		add		ebx,8
-		add		edx,8
-skip8:
-		cmp		ecx,4
-		jl		skip4
-		mov		eax,dword ptr [ebx]	// here 4-7 bytes
-		add		ebx,4
-		sub		ecx,4
-		mov		dword ptr [edx],eax
-		add		edx,4
-skip4:							// 0-3 remaining bytes
-		cmp		ecx,2
-		jl		skip2
-		mov		ax,word ptr [ebx]	// two bytes
-		cmp		ecx,3				// less than 3?
-		mov		word ptr [edx],ax
-		jl		outta
-		mov		al,byte ptr [ebx+2]	// last byte
-		mov		byte ptr [edx+2],al
-		jmp		outta
-skip2:
-		cmp		ecx,1
-		jl		outta
-		mov		al,byte ptr [ebx]
-		mov		byte ptr [edx],al
-outta:
-		pop		esi
-		pop		edi
-	}
-#else
-    __asm__
-    (
-        "pushl %%edi\n"
-        "pushl %%esi\n"
-        "movl %0,%%ecx\n"
-        "cmpl $0,%%ecx\n"
-        "je 7f\n"
-        "movl %1,%%edx\n"
-        "movl %2,%%ebx\n"
-        "cmpl $32,%%ecx\n"
-        "jl 2f\n"
-        "movl %%ecx,%%edi\n"
-        "andl $0xffffffe1,%%edi\n"
-        "subl $32,%%edi\n"
-        ".align 16\n"
-
-        "1:\n"
-        "movl (%%ebx,%%edi,1),%%eax\n"
-        "movl 0x4(%%ebx,%%edi,1),%%esi\n"
-        "movl %%eax,(%%edx,%%edi,1)\n"
-        "movl %%esi,0x4(%%edx,%%edi,1)\n"
-        "movl 0x8(%%ebx,%%edi,1),%%eax\n"
-        "movl 0xc(%%ebx,%%edi,1),%%esi\n"
-        "movl %%eax,0x8(%%edx,%%edi,1)\n"
-        "movl %%esi,0xc(%%edx,%%edi,1)\n"
-        "movl 0x10(%%ebx,%%edi,1),%%eax\n"
-        "movl 0x14(%%ebx,%%edi,1),%%esi\n"
-        "movl %%eax,0x10(%%edx,%%edi,1)\n"
-        "movl %%esi,0x14(%%edx,%%edi,1)\n"
-        "movl 0x18(%%ebx,%%edi,1),%%eax\n"
-        "movl 0x1c(%%ebx,%%edi,1),%%esi\n"
-        "movl %%eax,0x18(%%edx,%%edi,1)\n"
-        "movl %%esi,0x1c(%%edx,%%edi,1)\n"
-        "subl $32,%%edi\n"
-        "jge 1b\n"
-        "movl %%ecx,%%edi\n"
-        "andl $0xffffffe1,%%edi\n"
-        "addl %%edi,%%ebx\n"
-        "addl %%edi,%%edx\n"
-        "andl $31,%%ecx\n"
-        "jz 7f\n"
-
-        "2:\n"
-        "cmpl $16,%%ecx\n"
-        "jl 3f\n"
-        "movl (%%ebx),%%eax\n"
-        "movl %%eax,(%%edx)\n"
-        "movl 4(%%ebx),%%eax\n"
-        "movl %%eax,4(%%edx)\n"
-        "movl 8(%%ebx),%%eax\n"
-        "movl %%eax,8(%%edx)\n"
-        "movl 12(%%ebx),%%eax\n"
-        "movl %%eax,12(%%edx)\n"
-        "subl $16,%%ecx\n"
-        "addl $16,%%ebx\n"
-        "addl $16,%%edx\n"
-
-        "3:\n"
-        "cmpl $8,%%ecx\n"
-        "jl 4f\n"
-        "movl (%%ebx),%%eax\n"
-        "movl %%eax,(%%edx)\n"
-        "movl 4(%%ebx),%%eax\n"
-        "subl $8,%%ecx\n"
-        "movl %%eax,4(%%edx)\n"
-        "addl $8,%%ebx\n"
-        "addl $8,%%edx\n"
-
-        "4:\n"
-        "cmpl $4,%%ecx\n"
-        "jl 5f\n"
-        "movl (%%ebx),%%eax\n"
-        "addl $4,%%ebx\n"
-        "subl $4,%%ecx\n"
-        "movl %%eax,(%%edx)\n"
-        "addl $4,%%edx\n"
-
-        "5:\n"
-        "cmpl $2,%%ecx\n"
-        "jl 6f\n"
-        "movw (%%ebx),%%ax\n"
-        "cmpl $3,%%ecx\n"
-        "movw %%ax,(%%edx)\n"
-        "jl 7f\n"
-        "movb 2(%%ebx),%%al\n"
-        "movb %%al,2(%%edx)\n"
-        "jmp 7f\n"
-
-        "6:\n"
-        "cmpl $1,%%ecx\n"
-        "jl 7f\n"
-        "movb (%%ebx),%%al\n"
-        "movb %%al,(%%edx)\n"
-
-        "7:\n"
-        "popl %%esi\n"
-        "popl %%edi\n"
-        :
-        : "m" (count), "m" (dest), "m" (src)
-        : "%ecx", "%edx", "%ebx", "%eax"
-    );
-#endif
-}
-#endif
-
-
-/// Carmack's code
-#ifdef ENABLE_ASM
-void Com_Memset (void* dest, const int val, const size_t count)
-{
-	unsigned fillval;
-
-	if (count < 8)
-	{
-#ifdef _MSC_VER
-		__asm
-		{
-			mov		edx,dest
-			mov		eax, val
-			mov		ah,al
-			mov		ebx,eax
-			and		ebx, 0xffff
-			shl		eax,16
-			add		eax,ebx				// eax now contains pattern
-			mov		ecx,count
-			cmp		ecx,4
-			jl		skip4
-			mov		[edx],eax			// copy first dword
-			add		edx,4
-			sub		ecx,4
-	skip4:	cmp		ecx,2
-			jl		skip2
-			mov		word ptr [edx],ax	// copy 2 bytes
-			add		edx,2
-			sub		ecx,2
-	skip2:	cmp		ecx,0
-			je		skip1
-			mov		byte ptr [edx],al	// copy single byte
-	skip1:
-		}
-#else
-	__asm__
-	(
-		"movl %0,%%edx\n"
-		"movl %1,%%eax\n"
-		"movb %%al,%%ah\n"
-		"movl %%eax,%%ebx\n"
-		"andl $0xffff,%%ebx\n"
-		"shll $16,%%eax\n"
-		"addl %%ebx,%%eax\n"
-		"movl %2,%%ecx\n"
-		"cmpl $4,%%ecx\n"
-		"jl 1f\n"
-		"movl %%eax,(%%edx)\n"
-		"addl $4,%%edx\n"
-		"subl $4,%%ecx\n"
-
-		"1:\n"
-		"cmpl $2,%%ecx\n"
-		"jl 2f\n"
-		"movw %%ax,(%%edx)\n"
-		"addl $2,%%edx\n"
-		"subl $2,%%ecx\n"
-
-		"2:\n"
-		"cmpl $0,%%ecx\n"
-		"je 3f\n"
-		"movb %%al,(%%edx)\n"
-
-		"3:\n"
-		:
-		: "m" (dest), "m" (val), "m" (count)
-		: "%edx", "%eax", "%ebx", "%ecx"
-	);
-#endif
-		return;
-	}
-
-	fillval = val;
-
-	fillval = fillval|(fillval<<8);
-	fillval = fillval|(fillval<<16);		// fill dword with 8-bit pattern
-
-	_copyDWord ((unsigned*)(dest),fillval, count/4);
-
-#ifdef _MSC_VER
-	__asm									// padding of 0-3 bytes
-	{
-		mov		ecx,count
-		mov		eax,ecx
-		and		ecx,3
-		jz		skipA
-		and		eax,~3
-		mov		ebx,dest
-		add		ebx,eax
-		mov		eax,fillval
-		cmp		ecx,2
-		jl		skipB
-		mov		word ptr [ebx],ax
-		cmp		ecx,2
-		je		skipA
-		mov		byte ptr [ebx+2],al
-		jmp		skipA
-skipB:
-		cmp		ecx,0
-		je		skipA
-		mov		byte ptr [ebx],al
-skipA:
-	}
-#else
-	__asm__
-	(
-		"movl %0,%%ecx\n"
-		"movl %%ecx,%%eax\n"
-		"andl $3,%%ecx\n"
-		"jz 2f\n"
-		"andl $0xfffffffd,%%eax\n"
-		"movl %1,%%ebx\n"
-		"addl %%eax,%%ebx\n"
-		"movl %2,%%eax\n"
-		"cmpl $2,%%ecx\n"
-		"jl 1f\n"
-		"movw %%ax,(%%ebx)\n"
-		"cmpl $2,%%ecx\n"
-		"je 2f\n"
-		"movb %%al,2(%%ebx)\n"
-		"jmp 2f\n"
-
-		"1:\n"
-		"cmpl $0,%%ecx\n"
-		"je 2f\n"
-		"movb %%al,(%%ebx)\n"
-
-		"2:\n"
-		:
-		: "m" (count), "m" (dest), "m" (fillval)
-		: "%ecx", "%eax", "%ebx"
-	);
-#endif
-}
-#endif
-
-
-/// Carmack's code
-#ifdef ENABLE_ASM
-bool Com_Memcmp (const void *src0, const void *src1, const unsigned count)
-{
-	unsigned i;
-	// MMX version anyone?
-
-	if (count >= 16)
-	{
-		unsigned *dw = (unsigned *)(src0);
-		unsigned *sw = (unsigned *)(src1);
-
-		unsigned nm2 = count/16;
-		for (i = 0; i < nm2; i+=4)
-		{
-			unsigned tmp = (dw[i+0]-sw[i+0])|(dw[i+1]-sw[i+1])|
-						  (dw[i+2]-sw[i+2])|(dw[i+3]-sw[i+3]);
-			if (tmp)
-				return false;
-		}
-	}
-	if (count & 15)
-	{
-		byte *d = (byte*)src0;
-		byte *s = (byte*)src1;
-		for (i = count & 0xfffffff0; i < count; i++)
-		if (d[i]!=s[i])
-			return false;
-	}
-
-	return true;
-}
-#endif
 
 
 float	frand()
@@ -2765,7 +2136,7 @@ void *Z_TagMalloc (int size, int tag, bool crash)
 			stag="";
 		Com_Error (ERR_FATAL, "Z_Malloc: failed on allocation of %i bytes%s", size, stag);
 	}
-	Memset (z, 0, size);
+	memset (z, 0, size);
 	z_count++;
 	z_bytes += size;
 	z->magic = Z_MAGIC;
@@ -2879,56 +2250,7 @@ void Swap_Init ()
 }
 
 
-// Fast 15 cycle asm dot product, credits to Golgotha
-#ifdef ENABLE_ASM
-static inline float DotProduct(const float v1[3], const float v2[3])
-{
-	float dotret;
-
-#ifdef _MSC_VER
-	__asm
-	{
-		mov ecx, v1
-		mov eax, v2
-
-		;optimized dot product		;15 cycles
-		fld dword ptr   [eax+0]     ;starts & ends on cycle 0
-		fmul dword ptr  [ecx+0]     ;starts on cycle 1
-		fld dword ptr   [eax+4]     ;starts & ends on cycle 2
-		fmul dword ptr  [ecx+4]     ;starts on cycle 3
-		fld dword ptr   [eax+8]     ;starts & ends on cycle 4
-		fmul dword ptr  [ecx+8]     ;starts on cycle 5
-		fxch            st(1)       ;no cost
-		faddp           st(2),st(0) ;starts on cycle 6, stalls for cycles 7-8
-		faddp           st(1),st(0) ;starts on cycle 9, stalls for cycles 10-12
-		fstp dword ptr  [dotret]    ;starts on cycle 13, ends on cycle 14
-	}
-#else
-	__asm__
-	(
-		"movl %1,%%ecx\n"
-		"movl %2,%%eax\n"
-		"flds (%%eax)\n"
-		"fmuls (%%ecx)\n"
-		"flds 4(%%eax)\n"
-		"fmuls 4(%%ecx)\n"
-		"flds 8(%%eax)\n"
-		"fmuls 8(%%ecx)\n"
-		"fxch %%st(1)\n"
-		"faddp %%st(0),%%st(2)\n"
-		"faddp %%st(0),%%st(1)\n"
-		"fstps %0\n"
-		: "=m" (dotret)
-		: "m" (v1), "m" (v2)
-		: "%ecx", "%eax"
-	);
-#endif
-
-	return dotret;
-}
-#else
 #define DotProduct(x,y) ((x)[0]*(y)[0]+(x)[1]*(y)[1]+(x)[2]*(y)[2])
-#endif
 
 
 void strRemoveColors(char *str, char *strbuf)
@@ -3047,14 +2369,26 @@ Called when the window loses focus
 */
 void IN_DeactivateMouse ()
 {
-	if (!mouseactive)
+	if (!SDL_GetRelativeMouseMode())
+	{
+		// check if we need to hide the cursor for more cinematic experience
+		if (cl.cinematictime > 0 && cls.key_dest == key_game)
+		{
+			if (SDL_ShowCursor(SDL_QUERY))
+				SDL_ShowCursor(SDL_DISABLE);
+		}
+		else if (!SDL_ShowCursor(SDL_QUERY))
+			SDL_ShowCursor(SDL_ENABLE);
 		return;
+	}
 
-	mouseactive = false;
 	SDL_SetRelativeMouseMode(SDL_FALSE);
 
-	if (r_fullscreen->value)
-		SDL_ShowCursor(0);
+#if SDL_VERSION_ATLEAST(2,0,4)
+	// this would ideally put the cursor back where user left it
+	// but there are scenarios where it doesn't work properly
+	SDL_WarpMouseGlobal(mouse_x, mouse_y);
+#endif
 }
 
 
@@ -3067,17 +2401,59 @@ Called when the window gains focus or changes in some way
 */
 void IN_ActivateMouse ()
 {
-	if (mouseactive)
-			return;
+	if (SDL_GetRelativeMouseMode())
+	{
+		// no need to hijack mouse during demo playback
+		if (cl.attractloop)
+		{
+			SDL_SetRelativeMouseMode(SDL_FALSE);
+			if (SDL_ShowCursor(SDL_QUERY))
+				SDL_ShowCursor(SDL_DISABLE);
+		}
+		return;
+	}
+	// just make sure cursor is out of the way
+	else if (cl.attractloop)
+	{
+		if (SDL_ShowCursor(SDL_QUERY))
+			SDL_ShowCursor(SDL_DISABLE);
+		return;
+	}
 
-	mouseactive = true;
+#if SDL_VERSION_ATLEAST(2,0,4)
+	// save the cursor position so we can put it back later
+	SDL_GetGlobalMouseState(&mouse_x, &mouse_y);
+#endif
+
 	SDL_SetRelativeMouseMode(SDL_TRUE);
+}
+
+
+/*
+================
+IN_ShutdownJoystick
+================
+*/
+void IN_ShutdownJoystick ()
+{
+	if (joy)
+	{
+		SDL_JoystickClose (joy);
+		joy = NULL;
+		SDL_QuitSubSystem (SDL_INIT_JOYSTICK);
+
+		// old button and POV states default to no buttons pressed
+		joy_oldbuttonstate = joy_oldhatstate = 0;
+
+		joy_advancedinit = false;
+	}
 }
 
 
 void IN_Shutdown ()
 {
 	IN_DeactivateMouse ();
+	IN_ShutdownJoystick ();
 }
 
 
@@ -3085,7 +2461,7 @@ void IN_Shutdown ()
 
 void SZ_Init (sizebuf_t *buf, byte *data, int length)
 {
-	Memset (buf, 0, sizeof(*buf));
+	memset (buf, 0, sizeof(*buf));
 	buf->data = data;
 	buf->maxsize = length;
 }
@@ -3117,7 +2493,7 @@ char *SZ_GetSpace (sizebuf_t *buf, int length)
 
 void SZ_Write (sizebuf_t *buf, void *data, int length)
 {
-	Memcpy (SZ_GetSpace(buf,length),data,length);
+	memcpy (SZ_GetSpace(buf,length),data,length);
 }
 
 
@@ -3130,12 +2506,12 @@ void SZ_Print (sizebuf_t *buf, char *data)
 	if (buf->cursize)
 	{
 		if (buf->data[buf->cursize-1])
-			Memcpy ((byte *)SZ_GetSpace(buf, len),data,len); // no trailing 0
+			memcpy ((byte *)SZ_GetSpace(buf, len),data,len); // no trailing 0
 		else
-			Memcpy ((byte *)SZ_GetSpace(buf, len-1)-1,data,len); // write over trailing 0
+			memcpy ((byte *)SZ_GetSpace(buf, len-1)-1,data,len); // write over trailing 0
 	}
 	else
-		Memcpy ((byte *)SZ_GetSpace(buf, len),data,len);
+		memcpy ((byte *)SZ_GetSpace(buf, len),data,len);
 }
 
 
@@ -3252,8 +2628,8 @@ void Con_Linefeed ()
 	if (con.display == con.current)
 		con.display++;
 	con.current++;
-	Memset (&con.text[(con.current%con.totallines)*con.linewidth], ' ', con.linewidth);
-	Memset (&con.color[(con.current%con.totallines)*con.linewidth], 7, con.linewidth);
+	memset (&con.text[(con.current%con.totallines)*con.linewidth], ' ', con.linewidth);
+	memset (&con.color[(con.current%con.totallines)*con.linewidth], 7, con.linewidth);
 }
 
 
@@ -3403,7 +2779,7 @@ void Sys_ConsoleOutput (char *string)
 	if (console_textlen)
 	{
 		text[0] = '\r';
-		Memset(&text[1], ' ', console_textlen);
+		memset(&text[1], ' ', console_textlen);
 		text[console_textlen+1] = '\r';
 		text[console_textlen+2] = 0;
 		WriteFile(houtput, text, console_textlen+2, &dummy, NULL);
@@ -3581,7 +2957,7 @@ FILE *FS_Fopen(const char *name, const char *mode)
 	if (!file)
 	{
 		if (errno != ENOENT)
-			Com_DPrintf("FS_Fopen(\"%s\", \"%s\"): %d\n", name, mode);
+			Com_DPrintf("FS_Fopen(\"%s\", \"%s\"): %s\n", name, mode, strerror(errno));
 	}
 #else
 	errno_t	err;
@@ -3704,7 +3080,7 @@ void Cmd_Exec_f ()
 
 	// the file doesn't have a trailing 0, so we need to copy it off
 	f2 = (char*) Z_Malloc(len+1, true);
-	Memcpy (f2, f, len);
+	memcpy (f2, f, len);
 	f2[len] = 0;
 
 	Cbuf_InsertText (f2);
@@ -3754,8 +3130,8 @@ Writes lines containing "bind key value"
 */
 void Key_WriteBindings (FILE *f)
 {
-	int	i;
-	for (i=0 ; i<256 ; i++)
+	fprintf (f, "unbindall\n");
+	for (int i=0 ; i<256 ; i++)
 		if (keybindings[i] && keybindings[i][0])
 			fprintf (f, "bind %s \"%s\"\n", Key_KeynumToString(i), keybindings[i]);
 }
@@ -3850,7 +3226,7 @@ void Init_Palette ()
 	else
 		mypal = false;
 
-	Memcpy(d_8to24table, pal, 768);
+	memcpy(d_8to24table, pal, 768);
 	q2_palette_initialized = true;
 
 	if(pic)
@@ -3866,7 +3242,7 @@ void Init_Palette ()
 //  Contrast   - steepness
 //  Brightness - uniform offset
 //===========================================================================
-void MakeGammaRamp(WORD *ramp, float gamma, float contrast, float bright)
+void MakeGammaRamp(Uint16 *ramp, float gamma, float contrast, float bright)
 {
 #if 1
 	gamma *= 2;
@@ -3883,11 +3259,11 @@ void MakeGammaRamp(WORD *ramp, float gamma, float contrast, float bright)
 			value = 0;
 		if (value > 65535)
 			value = 65535;
-		ramp[i] = ramp[i + 256] = ramp[i + 512] = (WORD)value;
+		ramp[i] = ramp[i + 256] = ramp[i + 512] = (Uint16)value;
 	}
 #else
 	int     i;
-	double  ideal[256];			// After processing clamped to WORD.
+	double  ideal[256];			// After processing clamped to Uint16.
 	double  norm;
 
 	// Init the ramp as a line with the steepness defined by contrast.
@@ -3911,12 +3287,12 @@ void MakeGammaRamp(WORD *ramp, float gamma, float contrast, float bright)
 	// Clamp it and write the ramp table.
 	for(i = 0; i < 256; i++)
 	{
-		ideal[i] *= 0x100;		// Byte => word
+		ideal[i] *= 0x100;		// Byte => Uint16
 		if(ideal[i] < 0)
 			ideal[i] = 0;
 		if(ideal[i] > 0xffff)
 			ideal[i] = 0xffff;
-		ramp[i] = ramp[i + 256] = ramp[i + 512] = (WORD) ideal[i];
+		ramp[i] = ramp[i + 256] = ramp[i + 512] = (Uint16) ideal[i];
 	}
 #endif
 }
@@ -3938,7 +3314,7 @@ void SetGamma(float Gamma, float Bright, float Contrast)
 
 	MakeGammaRamp(gammaRamp, Gamma, Contrast, Bright);
 	if(SDL_SetWindowGammaRamp(hWnd, &gammaRamp[0], &gammaRamp[256], &gammaRamp[512]) < 0)
-		Com_DPrintf("GammaRamp change ^1failed^7: %s\n", SDL_GetError());
+		Com_DPrintf("^1GammaRamp change failed: %s\n", SDL_GetError());
 	else
 		Com_DPrintf("GammaRamp change succeeded\n");
 }
@@ -3968,15 +3344,9 @@ void	GL_InitImages ()
 			gammatable[i] = i;
 		else
 		{
-#ifndef OLDGAMMA
-			int inf;
-
-			inf = 255 * pow( i / 255.f, g );
-#else
 			float inf;
 
-			inf = 255 * pow ( (float)(i+0.5f)/255.5f , g ) + 0.5f;
-#endif
+			inf = 255 * pow ( (float)(i+0.5)/255.5 , g ) + 0.5;
 			if (inf < 0)
 				inf = 0;
 			if (inf > 255)
@@ -4005,7 +3375,7 @@ void GL_ShutdownMaterials()
 		if (!material->registration_sequence)
 			continue;		// free material_t slot
 		// free it
-		Memset (material, 0, sizeof(*material));
+		memset (material, 0, sizeof(*material));
 	}
 }
 
@@ -4022,7 +3392,7 @@ void GL_ShutdownImages()
 			continue;		// free image_t slot
 		// free it
 		glDeleteTextures (1, &image->texnum);
-		Memset (image, 0, sizeof(*image));
+		memset (image, 0, sizeof(*image));
 	}
 
 // Berserker's fix for old Q2 bug:
@@ -4117,7 +3487,6 @@ void	Cmd_RemoveCommand (char *cmd_name)
 */
 void GLimp_Shutdown()
 {
-	SDL_GL_MakeCurrent(hWnd, NULL);
 	SDL_GL_DeleteContext(hGLRC);
 	hGLRC = NULL;
 
@@ -4321,7 +3690,7 @@ void	MaterialList_f ()
 
 void png_my_error( png_structp png_ptr, png_const_charp message )
 {
-	longjmp( png_ptr->jmpbuf, 1 );
+	longjmp( png_jmpbuf(png_ptr), 1 );
 }
 
 void png_my_warning( png_structp png_ptr, png_const_charp message )
@@ -4340,7 +3709,7 @@ void imgfree()
 bool imgalloc(int width, int height)
 {
 	BYTE *bp,**rp;
-	long n;
+	int n;
 
 	int img_rowbytes = ((DWORD)width * 24 + 31) / 32 * 4;		// 24 bits is hard coded for GL_RGB
 	int img_imgbytes = img_rowbytes * height;
@@ -4400,7 +3769,7 @@ int MP_ScreenShot_PNG(void *parms)
 			png_destroy_write_struct( &png_ptr, NULL );
 		else
 		{
-			if( setjmp(png_ptr->jmpbuf) )
+			if( setjmp(png_jmpbuf(png_ptr)) )
 				png_destroy_write_struct( &png_ptr, &info_ptr );	// If we get here, we had a problem reading the file
 			else
 			{
@@ -4521,7 +3890,7 @@ void GL_ScreenShot_TGA(char *checkname, int len_name, bool silent)
 	c = 18+w*h*bytesize;
 
 	img_bmpbits = (byte*) Z_Malloc(c, true);
-///	Memset (buffer, 0, 18);
+///	memset (buffer, 0, 18);
 	img_bmpbits[2] = 2;		// uncompressed type
 	img_bmpbits[12] = w&255;
 	img_bmpbits[13] = w>>8;
@@ -4819,7 +4188,7 @@ void GL_EnvScreenShot_f ()
 	if (!scaled)
 		goto exit1;
 
-	Memset(tgaHeader, 0, 18);
+	memset(tgaHeader, 0, 18);
 	tgaHeader[2] = 2;
 	tgaHeader[12] = tgaHeader[14] = envShotSize & 255;
 	tgaHeader[13] = tgaHeader[15] = envShotSize >> 8;
@@ -5040,7 +4409,7 @@ void R_Register ()
 	r_sp3 = Cvar_Get ("r_sp3", "1", CVAR_VID_LATCH );
 	r_sp3->help = "allow to use sprites sp3 instead sp2.";
 	r_bloom = Cvar_Get ("r_bloom", "2", CVAR_ARCHIVE );		// 0 - no bloom, 1/2/3: 3-brightnest bloom, 1-darker bloom
-	r_bloom->help = "fullscreen bloom effect: 0 - disable, from 1 to 3 - increasing bloom intensity.";
+	r_bloom->help = "bloom effect: 0 - disable, from 1 to 3 - increasing bloom intensity.";
 	r_showbloom = Cvar_Get ("r_showbloom", "0", 0 );
 	r_showbloom->help = "show bloom map (for developer).";
 	r_modlights = Cvar_Get ("r_modlights", "3", CVAR_ARCHIVE );
@@ -5245,6 +4614,172 @@ void R_Register ()
 }
 
 
+bool VID_SetupGLWindow(int width, int height, bool fullscreen, int hz);
+bool VID_CreateGLWindow(int width, int height, bool fullscreen, int hz)
+{
+	int			x, y;
+	int			nSamples = (unsigned)r_multiSamples->value;
+	int			realSamples;
+
+	SDL_GL_SetAttribute(SDL_GL_ACCELERATED_VISUAL, 1);
+	SDL_GL_SetAttribute(SDL_GL_RED_SIZE, 8);
+	SDL_GL_SetAttribute(SDL_GL_GREEN_SIZE, 8);
+	SDL_GL_SetAttribute(SDL_GL_BLUE_SIZE, 8);
+	SDL_GL_SetAttribute(SDL_GL_ALPHA_SIZE, 8);
+	SDL_GL_SetAttribute(SDL_GL_BUFFER_SIZE, 32);
+	SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
+	SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
+
+	x = (int)vid_xpos->value;
+	y = (int)vid_ypos->value;
+	vid_xpos->modified = vid_ypos->modified = false;
+
+	nSamples = CeilPowerOfTwo(nSamples);
+	if (nSamples > 16) nSamples = 16;
+
+	for (; nSamples >= 2; nSamples >>= 1)
+	{
+		SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, 1);
+		SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, nSamples);
+
+		Com_Printf("...requesting window with %dx multisampling: ", nSamples);
+		hWnd = SDL_CreateWindow(WINDOW_CLASS_NAME, x, y, width, height, SDL_WINDOW_OPENGL);
+
+		if (hWnd)
+		{
+			Com_Printf("^2ok\n");
+			break;
+		}
+		else
+			Com_Printf("^1failed\n");
+	}
+	if (!hWnd)
+	{
+		SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, 0);
+		SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, 0);
+
+		Com_Printf("...creating window without multisampling: ");
+		hWnd = SDL_CreateWindow(WINDOW_CLASS_NAME, x, y, width, height, SDL_WINDOW_OPENGL);
+
+		if (hWnd)
+		{
+			Com_Printf("^2ok\n");
+		}
+		else
+		{
+			Com_Printf("^1failed\n");
+			Com_Printf("^1SDL_CreateWindow failed: %s\n", SDL_GetError());
+			return false;
+		}
+	}
+
+	hGLRC = SDL_GL_CreateContext(hWnd);
+	if (!hGLRC)
+	{
+		SDL_DestroyWindow(hWnd);
+		hWnd = NULL;
+		Com_Printf("^1SDL_GL_CreateContext failed: %s\n", SDL_GetError());
+		return false;
+	}
+
+	SDL_GL_GetAttribute(SDL_GL_MULTISAMPLESAMPLES, &realSamples);
+	if (realSamples)
+	{
+		Com_Printf("Using multisampling (%i samples per pixel)\n");
+		gl_config.arb_multisample = true;
+	}
+	else
+		gl_config.arb_multisample = false;
+
+	if (nSamples != realSamples)
+		Cvar_ForceSetValue("r_multiSamples", realSamples);
+
+	Com_Printf("^3VSYNC");
+
+	if (!SDL_GL_SetSwapInterval(1))
+	{
+		Com_Printf("^2 supported\n");
+		gl_config.gl_swap_control = true;
+
+		Com_Printf("^3Adaptive VSYNC");
+
+		if (!SDL_GL_SetSwapInterval(-1))
+		{
+			Com_Printf("^2 supported\n");
+			gl_config.gl_swap_control_tear = true;
+		}
+		else
+		{
+			Com_Printf("^1 not supported\n");
+			gl_config.gl_swap_control_tear = false;
+		}
+	}
+	else
+	{
+		Com_Printf("^1 not supported\n");
+		gl_config.gl_swap_control = false;
+	}
+
+	Com_Printf("Using SDL video driver: %s\n", SDL_GetCurrentVideoDriver());
+	SetGamma(vid_gamma->value, vid_bright->value, vid_contrast->value);
+
+	if (fullscreen)
+		return VID_SetupGLWindow(width, height, fullscreen, hz);
+	return true;
+}
+
+
+bool VID_SetupGLWindow(int width, int height, bool fullscreen, int hz)
+{
+	// resize existing window
+	if (hWnd)
+	{
+		if (fullscreen)
+		{
+			SDL_DisplayMode dm;
+
+			Com_Printf("...attempting fullscreen\n");
+
+			dm.w = width;
+			dm.h = height;
+			dm.driverdata = NULL;
+			dm.format = 0;
+
+			dm.refresh_rate = hz;
+			if (hz)
+				Com_Printf("...display refresh rate is %d Hz\n", hz);
+
+			SDL_SetWindowDisplayMode(hWnd, &dm);
+
+			Com_Printf("...calling SDL_SetWindowFullscreen: ");
+			if (!SDL_SetWindowFullscreen(hWnd, SDL_WINDOW_FULLSCREEN))
+			{
+				Com_Printf("^2ok\n");
+				gl_state.fullscreen = true;
+			}
+			else
+			{
+				Com_Printf("^1failed\n");
+				return false;
+			}
+		}
+		else
+		{
+			Com_Printf("...setting windowed mode\n");
+			SDL_SetWindowFullscreen(hWnd, 0);
+			SDL_SetWindowSize(hWnd, width, height);
+			gl_state.fullscreen = false;
+		}
+
+		return true;
+	}
+	else
+	{
+		return VID_CreateGLWindow(width, height, fullscreen, hz);
+	}
+}
+
+
 bool Vid_GetModeInfo( int *width, int *height, int mode )
 {
 	if ( mode < 0 || mode >= _VID_NUM_MODES )
@@ -5258,11 +4793,8 @@ bool Vid_GetModeInfo( int *width, int *height, int mode )
 
 rserr_t GLimp_SetMode( int *pwidth, int *pheight, int mode, bool fullscreen, int hz )
 {
-	cvar_t		*vid_xpos, *vid_ypos;
-	int			x, y;
 	int width, height;
 	char *win_fs[] = { "Win", "FS" };
-	int			nSamples = max((int)r_multiSamples->value, 1);
 
 	Com_Printf("Initializing OpenGL display\n");
 	Com_Printf("...setting mode %d:", mode );
@@ -5275,199 +4807,19 @@ rserr_t GLimp_SetMode( int *pwidth, int *pheight, int mode, bool fullscreen, int
 
 	Com_Printf(" %dx%d:%s\n", width, height, win_fs[fullscreen] );
 
-	// resize existing window
-	// this doesn't seem to happen currently,
-	// but it would be worth looking into since
-	// SDL lets us switch resolution or windowed,
-	// fullscreen mode without having to destroy GL
-	// context
-	if (hWnd)
-	{
-		viddef.width = width;
-		viddef.height = height;
+	*pwidth = width;
+	*pheight = height;
 
+	if (!VID_SetupGLWindow(width, height, fullscreen, hz))
+	{
 		if (fullscreen)
-		{
-			SDL_DisplayMode dm;
-
-			Com_Printf("...attempting fullscreen\n");
-
-			dm.w = width;
-			dm.h = height;
-			dm.driverdata = NULL;
-			dm.format = 0;
-
-			dm.refresh_rate = hz;
-			Com_Printf("...display refresh rate is %d Hz\n", hz);
-
-			SDL_SetWindowDisplayMode(hWnd, &dm);
-
-			Com_Printf("...calling SDL_SetWindowFullscreen: ");
-			if (!SDL_SetWindowFullscreen(hWnd, SDL_WINDOW_FULLSCREEN))
-			{
-				Com_Printf("ok\n");
-				gl_state.fullscreen = true;
-			}
-			else
-			{
-				Com_Printf("^1failed\n");
-				Com_Printf("...setting windowed mode\n");
-				SDL_SetWindowFullscreen(hWnd, 0);
-				SDL_SetWindowSize(hWnd, width, height);
-				SDL_ShowCursor(1);
-				gl_state.fullscreen = false;
-			}
-		}
-		else
-		{
-			Com_Printf("...setting windowed mode\n");
-			SDL_SetWindowFullscreen(hWnd, 0);
-			SDL_SetWindowSize(hWnd, width, height);
-			SDL_ShowCursor(1);
-			gl_state.fullscreen = false;
-		}
-
-		*pwidth = width;
-		*pheight = height;
-
-		return rserr_ok;
+			return rserr_invalid_fullscreen;
+		return rserr_unknown;
 	}
-	else
-	{
-		SDL_GL_SetAttribute(SDL_GL_ACCELERATED_VISUAL, 1);
-		SDL_GL_SetAttribute(SDL_GL_RED_SIZE, 8);
-		SDL_GL_SetAttribute(SDL_GL_GREEN_SIZE, 8);
-		SDL_GL_SetAttribute(SDL_GL_BLUE_SIZE, 8);
-		SDL_GL_SetAttribute(SDL_GL_ALPHA_SIZE, 8);
-		SDL_GL_SetAttribute(SDL_GL_BUFFER_SIZE, 32);
-		SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
-		SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
-	}
-
-	vid_xpos = Cvar_Get("vid_xpos", "0", 0);
-	vid_ypos = Cvar_Get("vid_ypos", "0", 0);
-	x = vid_xpos->value;
-	y = vid_ypos->value;
-
-	if (nSamples >= 2)
-	{
-		SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, 1);
-		SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, nSamples);
-
-		Com_Printf("...creating window with multisampling support: ");
-		hWnd = SDL_CreateWindow(WINDOW_CLASS_NAME, x, y, width, height, SDL_WINDOW_OPENGL);
-
-		if (!hWnd)
-		{
-			Com_Printf("^1failed\n");
-			Com_Printf("...retrying without multisampling support: ");
-
-			gl_config.arb_multisample = false;
-			SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, 0);
-			SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, 0);
-			hWnd = SDL_CreateWindow(WINDOW_CLASS_NAME, x, y, width, height, SDL_WINDOW_OPENGL);
-
-			if (!hWnd)
-				Sys_Error("SDL_CreateWindow: %s", SDL_GetError());
-		}
-		else
-		{
-			int result;
-			SDL_GL_GetAttribute(SDL_GL_MULTISAMPLEBUFFERS, &result);
-			gl_config.arb_multisample = result ? true : false;
-			// make it automatic
-			if (gl_config.arb_multisample)
-				Com_Printf("Using multisampling (%i samples per pixel)\n", result);
-			else
-				Com_Printf("^1Multisampling setup FAILED. Try lowering r_multiSamples.\n");
-
-		}
-	}
-	else
-	{
-		gl_config.arb_multisample = false;
-		SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, 0);
-		SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, 0);
-
-		Com_Printf("...creating window without multisampling support: ");
-		hWnd = SDL_CreateWindow(WINDOW_CLASS_NAME, x, y, width, height, SDL_WINDOW_OPENGL);
-
-		if (!hWnd)
-			Sys_Error("SDL_CreateWindow: %s", SDL_GetError());
-	}
-
-	Com_Printf("ok\n");
 
 	// let the sound and input subsystems know about the new window
 	viddef.width = width;
 	viddef.height = height;
-
-	if ( fullscreen )
-	{
-		SDL_DisplayMode dm;
-
-		Com_Printf("...attempting fullscreen\n" );
-
-		dm.w = width;
-		dm.h = height;
-		dm.driverdata = NULL;
-		dm.format = 0;
-
-		dm.refresh_rate = hz;
-		Com_Printf("...display refresh rate is %d Hz\n", hz);
-
-		SDL_SetWindowDisplayMode( hWnd, &dm );
-
-		Com_Printf("...calling SDL_SetWindowFullscreen: ");
-		if ( !SDL_SetWindowFullscreen( hWnd, SDL_WINDOW_FULLSCREEN ) )
-		{
-			Com_Printf("ok\n");
-			SDL_ShowCursor(0);
-			gl_state.fullscreen = true;
-		}
-		else
-		{
-			Com_Printf("^1failed\n");
-			Com_Printf("...setting windowed mode\n");
-			SDL_ShowCursor(1);
-			gl_state.fullscreen = false;
-		}
-	}
-	else
-	{
-		Com_Printf("...setting windowed mode\n");
-		SDL_ShowCursor(1);
-		gl_state.fullscreen = false;
-	}
-
-	*pwidth = width;
-	*pheight = height;
-
-	hGLRC = SDL_GL_CreateContext(hWnd);
-	if (!hGLRC)
-	{
-		SDL_DestroyWindow(hWnd);
-		hWnd = NULL;
-		Sys_Error("SDL_GL_CreateContext failed: %s", SDL_GetError());
-	}
-	if (SDL_GL_MakeCurrent(hWnd, hGLRC) < 0)
-	{
-		SDL_GL_DeleteContext(hGLRC);
-		hGLRC = NULL;
-		SDL_DestroyWindow(hWnd);
-		hWnd = NULL;
-		Sys_Error("SDL_GL_MakeCurrent failed: %s", SDL_GetError());
-	}
-
-	if (!SDL_GL_SetSwapInterval(-1))
-	{
-		gl_config.wgl_swap_control_tear = true;
-		SDL_GL_SetSwapInterval(0);
-	}
-
-	Com_Printf("Using SDL video driver: %s\n", SDL_GetCurrentVideoDriver());
-
-	SetGamma(vid_gamma->value, vid_bright->value, vid_contrast->value);
 
 	return rserr_ok;
 }
@@ -6056,32 +5408,29 @@ void R_InitDefaultTextures ()
 	r_screenTexture = r_bloomTexture = r_notexture;	// Чисто для того, чтоб не вылетало на стандартных программах...
 	if(gl_config.screentexture)
 	{
-		if(r_distort->value || r_fullscreen->value)		// r_screenTexture нужна также для bloom !!!
+		if(r_distort->value)		// r_screenTexture нужна также для bloom !!!
 		{
-			Memset(trans, 0, gl_config.screenTextureSize[0]*gl_config.screenTextureSize[1]*3);	/// т.к. экран-текстура не квадратная, то произведем её очистку, чтоб не было артефактов вне "экрана" (зеленые чёрточки).
+			memset(trans, 0, gl_config.screenTextureSize[0]*gl_config.screenTextureSize[1]*3);	/// т.к. экран-текстура не квадратная, то произведем её очистку, чтоб не было артефактов вне "экрана" (зеленые чёрточки).
 			r_screenTexture = GL_LoadPic ("r_screenTexture", NULL, (byte*)trans, gl_config.screenTextureSize[0], gl_config.screenTextureSize[1], it_pic, 24, true, 0);	/// динамическую текстуру НЕ сжимаем!!! Иначе тормоза!
 		}
-		if(r_fullscreen->value)
+		unsigned temp = (min(vid.width, vid.height)>>4);	// bloom_size - итоговый размер bloom - в 16 раз меньше
+		bloom_size = 1;
+		while (1)
 		{
-			unsigned temp = (min(vid.width, vid.height)>>4);	// bloom_size - итоговый размер bloom - в 16 раз меньше
-			bloom_size = 1;
-			while (1)
-			{
-				bloom_size *= 2;
-				if(bloom_size >= temp)
-					break;
-			}
-			temp = (min(vid.width, vid.height)>>1);	// max_bloom_size - размер bloomTexture - всего в 2 раза меньше экрана
-			max_bloom_size = 1;
-			while (1)
-			{
-				max_bloom_size *= 2;
-				if(max_bloom_size >= temp)
-					break;
-			}
-///			Memset(trans, 0, max_bloom_size*max_bloom_size*3);
-			r_bloomTexture = GL_LoadPic ("r_bloomTexture", NULL, (byte*)trans, max_bloom_size, max_bloom_size, it_pic, 24, true, 0);	/// динамическую текстуру НЕ сжимаем!!! Иначе тормоза!
+			bloom_size *= 2;
+			if(bloom_size >= temp)
+				break;
 		}
+		temp = (min(vid.width, vid.height)>>1);	// max_bloom_size - размер bloomTexture - всего в 2 раза меньше экрана
+		max_bloom_size = 1;
+		while (1)
+		{
+			max_bloom_size *= 2;
+			if(max_bloom_size >= temp)
+				break;
+		}
+///		memset(trans, 0, max_bloom_size*max_bloom_size*3);
+		r_bloomTexture = GL_LoadPic ("r_bloomTexture", NULL, (byte*)trans, max_bloom_size, max_bloom_size, it_pic, 24, true, 0);	/// динамическую текстуру НЕ сжимаем!!! Иначе тормоза!
 	}
 
 	tmp[0][0][0] = tmp[0][0][1] = tmp[0][0][2] = 0;
@@ -6135,13 +5484,13 @@ static inline float fastsqrt(float n)
 // Fast reciprocal square root (Quake 3 game code)
 static inline float RSqrt(float number)
 {
-	long i;
+	int i;
 	float x2, y;
 	const float threehalfs = 1.5f;
 
 	x2 = number * 0.5f;
 	y  = number;
-	i  = * (long *) &y;						// evil floating point bit level hacking
+	i  = * (int *) &y;						// evil floating point bit level hacking
 	i  = 0x5f3759df - (i >> 1);             // what the fuck?
 	y  = * (float *) &i;
 	y  = y * (threehalfs - (x2 * y * y));   // 1st iteration
@@ -6479,7 +5828,7 @@ image_t *R_LoadLightFilter (int id, char *map)
 		else
 		{
 			nullpixels = (byte*)Z_Malloc(minw*minh*4, true);
-///			Memset(nullpixels, 0, minw*minh*3);
+///			memset(nullpixels, 0, minw*minh*3);
 			glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X_ARB+i, 0, GL_RGBA8, minw, minh, 0, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, nullpixels);	// Berserker: using BGRA instead RGB
 			Z_Free(nullpixels);
 		}
@@ -7082,8 +6431,10 @@ void ApplyChanges( void *unused )
 	Cvar_SetValue( "r_picmip", 3 - s_tq_slider.curvalue );
 	Cvar_SetValue( "r_picmip_bump", 3 - s_tq_slider.curvalue );
 	Cvar_SetValue( "r_fullscreen", s_fs_box.curvalue );
-	Cvar_SetValue( "r_swapinterval"/*"r_finish"*/, s_finish_box.curvalue );
-	Cvar_SetValue( "r_nvMultisampleFilterHint", s_nvhint_box.curvalue );
+	if (gl_config.gl_swap_control)
+		Cvar_SetValue( "r_swapinterval"/*"r_finish"*/, s_finish_box.curvalue );
+	if (gl_config.nv_multisample_hint)
+		Cvar_SetValue( "r_nvMultisampleFilterHint", s_nvhint_box.curvalue );
 	Cvar_SetValue( "r_mode", s_mode_list.curvalue );
 	Cvar_SetValue( "r_modulate", s_lmscale_slider.curvalue * 0.1 );
 	Cvar_SetValue( "r_overbright", s_bmscale_slider.curvalue );
@@ -7103,17 +6454,21 @@ void ApplyChanges( void *unused )
 		Cvar_SetValue( "r_anisotropy", pow(2.0, s_anisotropy_slider.curvalue-1.0) );
 	else
 		Cvar_SetValue( "r_anisotropy", 0 );
-	if(s_antialias_slider.curvalue > 1)
-		Cvar_ForceSetValue( "r_multiSamples", pow(2.0, s_antialias_slider.curvalue-1.0) );
-	else
-		Cvar_ForceSetValue( "r_multiSamples", 1 );
+	if (gl_config.arb_multisample)
+		if(s_antialias_slider.curvalue > 1)
+			Cvar_ForceSetValue( "r_multiSamples", pow(2.0, s_antialias_slider.curvalue-1.0) );
+		else
+			Cvar_ForceSetValue( "r_multiSamples", 1 );
 
 	/*
 	** update appropriate stuff if we're running OpenGL has been modified
 	*/
 	Check_VidRestart(true);
 
-	M_ForceMenuOff();
+	if (cls.state == ca_disconnected)
+		M_PopMenu();
+	else
+		M_ForceMenuOff();
 }
 
 
@@ -7128,7 +6483,7 @@ int	Vid_GetSafeMode(bool msg)
 		y = dm.h;
 	}
 	else
-		Com_Printf("SDL_GetDesktopDisplayMode ^1failed^7: %s\n", SDL_GetError());
+		Com_Printf("^1SDL_GetDesktopDisplayMode failed: %s\n", SDL_GetError());
 
 	for (; i<_VID_NUM_MODES; i++)
 		if (vid_modes[i].width == x && vid_modes[i].height == y)
@@ -7845,7 +7200,7 @@ void VID_MenuInit(bool restart)
 ///		Cvar_SetValue( "r_finish", 1 );
 	if(r_swapinterval->value < 0)
 		Cvar_SetValue( "r_swapinterval", 0 );
-	if (gl_config.wgl_swap_control_tear)
+	if (gl_config.gl_swap_control_tear)
 	{
 		if(r_swapinterval->value > 2)
 			Cvar_SetValue( "r_swapinterval", 2 );
@@ -7915,8 +7270,8 @@ mnu2:
 	if (r_multiSamples->value < 1)
 		Cvar_ForceSetValue( "r_multiSamples", 1 );
 
-	if (r_multiSamples->value > 8)
-		Cvar_ForceSetValue ("r_multiSamples", 8 );
+	if (r_multiSamples->value > 16)
+		Cvar_ForceSetValue ("r_multiSamples", 16 );
 
 	int anf_ = 1;
 	int goodanf_ = 1;	// Легитимное значение антиалиазинга
@@ -7930,7 +7285,7 @@ mnu2:
 			goodpos_ = amax_;
 		}
 
-		if(anf_ >= 8)
+		if(anf_ >= 16)
 			goto mnu3_;
 
 		anf_ += anf_;
@@ -8191,7 +7546,7 @@ mnu3:
 	s_anisotropy_slider.curvalue = goodpos;
 	s_anisotropy_slider.generic.statusbarfunc = Menu_DrawAnisoStatusBar;
 
-	s_antialias_slider.generic.type	= MTYPE_SLIDER;
+	s_antialias_slider.generic.type = MTYPE_SLIDER;
 	s_antialias_slider.generic.x = 0;
 	s_antialias_slider.generic.y = 153;
 	s_antialias_slider.generic.name = "multisampling";
@@ -8201,22 +7556,28 @@ mnu3:
 	s_antialias_slider.curvalue = goodpos_;
 	s_antialias_slider.generic.statusbarfunc = Menu_DrawAaStatusBar;
 
-	s_nvhint_box.generic.type = MTYPE_SPINCONTROL;
-	s_nvhint_box.generic.x	= 0;
-	s_nvhint_box.generic.y	= 162;
-	s_nvhint_box.generic.name	= "filter hint";
-	s_nvhint_box.curvalue = r_nvMultisampleFilterHint->value;
-	s_nvhint_box.itemnames = hint_names;
+	if(gl_config.nv_multisample_hint)
+	{
+		s_nvhint_box.generic.type = MTYPE_SPINCONTROL;
+		s_nvhint_box.generic.x = 0;
+		s_nvhint_box.generic.y = 162;
+		s_nvhint_box.generic.name = "filter hint";
+		s_nvhint_box.curvalue = r_nvMultisampleFilterHint->value;
+		s_nvhint_box.itemnames = hint_names;
+	}
 
-	s_finish_box.generic.type = MTYPE_SPINCONTROL;
-	s_finish_box.generic.x	= 0;
-	s_finish_box.generic.y	= 171;
-	s_finish_box.generic.name	= "frame sync";
-	s_finish_box.curvalue = r_swapinterval->value;
-	if (gl_config.wgl_swap_control_tear)
-		s_finish_box.itemnames = vsync_names;
-	else
-		s_finish_box.itemnames = yesno_names;
+	if(gl_config.gl_swap_control)
+	{
+		s_finish_box.generic.type = MTYPE_SPINCONTROL;
+		s_finish_box.generic.x = 0;
+		s_finish_box.generic.y = 171;
+		s_finish_box.generic.name = "frame sync";
+		s_finish_box.curvalue = r_swapinterval->value;
+		if(gl_config.gl_swap_control_tear)
+			s_finish_box.itemnames = vsync_names;
+		else
+			s_finish_box.itemnames = yesno_names;
+	}
 
 	s_screen_infos_action.generic.type	= MTYPE_ACTION;
 	s_screen_infos_action.generic.x		= 0;
@@ -8257,8 +7618,10 @@ mnu3:
 	Menu_AddItem( &s_opengl_menu, ( void * ) &s_simple);
 	Menu_AddItem( &s_opengl_menu, ( void * ) &s_anisotropy_slider );
 	Menu_AddItem( &s_opengl_menu, ( void * ) &s_antialias_slider );
-	Menu_AddItem( &s_opengl_menu, ( void * ) &s_nvhint_box );
-	Menu_AddItem( &s_opengl_menu, ( void * ) &s_finish_box );
+	if(gl_config.nv_multisample_hint)
+		Menu_AddItem( &s_opengl_menu, ( void * ) &s_nvhint_box );
+	if(gl_config.gl_swap_control)
+		Menu_AddItem( &s_opengl_menu, ( void * ) &s_finish_box );
 	Menu_AddItem( &s_opengl_menu, ( void * ) &s_screen_infos_action );
 	Menu_AddItem( &s_opengl_menu, ( void * ) &s_video_options_action );
 
@@ -8272,7 +7635,7 @@ mnu3:
 
 void Mod_Init ()
 {
-	Memset (mod_novis, 0xff, sizeof(mod_novis));
+	memset (mod_novis, 0xff, sizeof(mod_novis));
 }
 
 
@@ -10525,8 +9888,8 @@ repeat:
 
 	if (gl_config.occlusion)
 	{
-		Memset(occResults, -9999, sizeof(occResult_t)*MAX_ENTITIES);
-		Memset(r_entities_occUSE, 0, sizeof(int)*MAX_ENTITIES);
+		memset(occResults, -9999, sizeof(occResult_t)*MAX_ENTITIES);
+		memset(r_entities_occUSE, 0, sizeof(int)*MAX_ENTITIES);
 		glGenQueriesARB(MAX_ENTITIES, r_entities_occID);
 	}
 
@@ -10601,7 +9964,7 @@ void Mod_Free (model_t *mod)
 	}
 
 	Hunk_Free (mod->extradata, mod->extradatasize);
-	Memset (mod, 0, sizeof(*mod));
+	memset (mod, 0, sizeof(*mod));
 }
 
 
@@ -10855,56 +10218,6 @@ void Con_ClearNotify ()
 		con.times[i] = 0;
 }
 
-void Key_Get (int key)
-{
-	/// Berserker's fix: если выполнить команду GET не из игры, а просто из консоли, то имеем мелкий глючок-с...
-	if (cls.state != ca_active)
-	{
-		cls.key_dest = key_console;
-		chat_bufferlen = 0;
-		chat_buffer[0] = 0;
-	}
-
-	if ( key == K_ENTER || key == K_KP_ENTER )
-	{
-		cvar_t *getreceived = Cvar_Get("get_received", "", 0);
-		getreceived->help = "special cvar for a reception of data for GET command.";
-		Cvar_Set("get_received", chat_buffer);
-
-		cls.key_dest = key_game;
-		chat_bufferlen = 0;
-		chat_buffer[0] = 0;
-		return;
-	}
-
-	if (key == K_ESCAPE)
-	{
-		cls.key_dest = key_game;
-		chat_bufferlen = 0;
-		chat_buffer[0] = 0;
-		return;
-	}
-
-	if (key < 32 || key > 127)
-		return;	// non printable
-
-	if (key == K_BACKSPACE)
-	{
-		if (chat_bufferlen)
-		{
-			chat_bufferlen--;
-			chat_buffer[chat_bufferlen] = 0;
-		}
-		return;
-	}
-
-	if (chat_bufferlen == sizeof(chat_buffer)-1)
-		return; // all full
-
-	chat_buffer[chat_bufferlen++] = key;
-	chat_buffer[chat_bufferlen] = 0;
-}
-
 void Key_Message (int key)
 {
 	/// Berserker's fix: если выполнить команду MESSAGEMODE* не из игры, а просто из консоли, то имеем мелкий глючок-с...
@@ -11086,23 +10399,16 @@ void GL_UpdateSwapInterval ()
 {
 	if ( r_swapinterval->modified )
 	{
+		if (gl_config.gl_swap_control)
+		{
+			if (r_swapinterval->value == 2 && gl_config.gl_swap_control_tear)
+				SDL_GL_SetSwapInterval(-1);
+			else if (r_swapinterval->value == 1)
+				SDL_GL_SetSwapInterval(1);
+			else
+				SDL_GL_SetSwapInterval(0);
+		}
 		r_swapinterval->modified = false;
-		if (r_swapinterval->value == 2)
-		{
-			if (SDL_GL_SetSwapInterval(-1) == -1)
-			{
-				Com_Printf("Late swap tearing failed, trying regular VSYNC: ");
-				if (!SDL_GL_SetSwapInterval(1))
-					Com_Printf("ok\n");
-				else
-					Com_Printf("^1failed^7 - %s\n", SDL_GetError());
-			}
-		}
-		else
-		{
-			if (SDL_GL_SetSwapInterval((int)r_swapinterval->value) == -1)
-				Com_Printf("SDL_GL_SetSwapInterval(%i) ^1failed^7: %s\n", (int)r_swapinterval->value, SDL_GetError());
-		}
 	}
 }
 
@@ -11217,8 +10523,9 @@ void SCR_CalcVrect ()
 {
 	int		size;
 
-	if (r_mirrors->value || (r_bloom->value>0 && r_bloom->value<=3 && r_fullscreen->value))
-		Cvar_Set ("viewsize","100");
+	if (!r_simple->value)
+		if (scr_viewsize->value != 100)
+			Cvar_Set("viewsize", "100");
 	else
 	{
 		// bound viewsize
@@ -11441,7 +10748,7 @@ int FS_FOpenFile (char *filename, FILE **file, bool test, int zip_start)
 						{
 							if(!b_stricmp(ZipCache[i].pak_name, pak->filename))
 							{
-zip_ch:							Memcpy(&pf, &ZipCache[i], sizeof(zipfile_t));		// Нашли уже открытый ZIP и загрузили его описатель в pf
+zip_ch:							memcpy(&pf, &ZipCache[i], sizeof(zipfile_t));		// Нашли уже открытый ZIP и загрузили его описатель в pf
 								last_zip_number = i;
 								goto clc;
 							}
@@ -11459,7 +10766,7 @@ zip_ch:							Memcpy(&pf, &ZipCache[i], sizeof(zipfile_t));		// Нашли уж�
 				strcpy(&ZipCache[slot].pak_name[0], pak->filename);	// Если не нашли zip в кэше, откроем его...
 				if (!PackFileOpen (&ZipCache[slot]))
 					Com_Error(ERR_FATAL, "Error opening pk2-file: %s", pak->filename);
-				Memcpy(&pf, &ZipCache[slot], sizeof(zipfile_t));
+				memcpy(&pf, &ZipCache[slot], sizeof(zipfile_t));
 				last_zip_number = slot;
 
 clc:			if(test)
@@ -11582,7 +10889,7 @@ void FS_ClearFileCache(char *name)
 			if (!b_stricmp(fs_cache[i].name, name))
 			{
 				if (i < fs_cache_number-1)
-					Memcpy(&fs_cache[i], &fs_cache[i+1], sizeof(fs_cache_t) * (fs_cache_number-1-i));
+					memcpy(&fs_cache[i], &fs_cache[i+1], sizeof(fs_cache_t) * (fs_cache_number-1-i));
 				fs_cache_number--;
 				return;
 			}
@@ -11674,7 +10981,7 @@ m1:	if (!h && !file_from_pk2 && !file_from_pak)
 	{
 		if(!cached && !ovr)
 			fs_cache[fs_cache_number++].pak = last_zip_number;
-		Memcpy(buf, zipdata, len);
+		memcpy(buf, zipdata, len);
 		Z_Free(zipdata);
 	}
 	else
@@ -12067,7 +11374,7 @@ int DDSDecompressDXT1(ddsBuffer_t *dds, int width, int height, unsigned char *pi
 	for(y = 0; y < yBlocks; y++)
 	{
 		/* 8 bytes per block */
-		block = (ddsColorBlock_t *) ((unsigned)dds->data + y * xBlocks * 8);
+		block = (ddsColorBlock_t *) (dds->data + y * xBlocks * 8);
 
 		/* walk x */
 		for(x = 0; x < xBlocks; x++, block++)
@@ -12110,7 +11417,7 @@ int DDSDecompressDXT3(ddsBuffer_t *dds, int width, int height, unsigned char *pi
 	for(y = 0; y < yBlocks; y++)
 	{
 		/* 8 bytes per block, 1 block for alpha, 1 block for color */
-		block = (ddsColorBlock_t *) ((unsigned)dds->data + y * xBlocks * 16);
+		block = (ddsColorBlock_t *) (dds->data + y * xBlocks * 16);
 
 		/* walk x */
 		for(x = 0; x < xBlocks; x++, block++)
@@ -12163,7 +11470,7 @@ int DDSDecompressDXT5(ddsBuffer_t *dds, int width, int height, unsigned char *pi
 	for(y = 0; y < yBlocks; y++)
 	{
 		/* 8 bytes per block, 1 block for alpha, 1 block for color */
-		block = (ddsColorBlock_t *) ((unsigned)dds->data + y * xBlocks * 16);
+		block = (ddsColorBlock_t *) (dds->data + y * xBlocks * 16);
 
 		/* walk x */
 		for(x = 0; x < xBlocks; x++, block++)
@@ -12298,7 +11605,7 @@ int DDSDecompress(ddsBuffer_t *dds, unsigned char *pixels)
 
 		default:
 		case DDS_PF_UNKNOWN:
-			Memset(pixels, 0xFF, width * height * 4);
+			memset(pixels, 0xFF, width * height * 4);
 			r = -1;
 			break;
 	}
@@ -12370,22 +11677,6 @@ void LoadDDS (char *name, byte **pic, int *width, int *height)
 }
 
 
-
-static void jpg_noop( j_decompress_ptr cinfo )
-{
-}
-
-static boolean jpg_fill_input_buffer( j_decompress_ptr cinfo )
-{
-	Com_DPrintf( "LoadJPG: Premature end of jpeg file\n" );
-    return true;
-}
-
-static void jpg_skip_input_data( j_decompress_ptr cinfo, long num_bytes )
-{
-    cinfo->src->next_input_byte += (size_t) num_bytes;
-    cinfo->src->bytes_in_buffer -= (size_t) num_bytes;
-}
 
 void LoadJPG (char *name, byte **pic, int *width, int *height)
 {
@@ -12468,7 +11759,7 @@ void LoadJPG (char *name, byte **pic, int *width, int *height)
 ///			for( i = 0; i < cinfo.output_width; i++, img += 3, scan += 3 )
 ///				img[0] = scan[0], img[1] = scan[1], img[2] = scan[2];
 			// Berserker: speed up
-			Memcpy(img, scan, wb);
+			memcpy(img, scan, wb);
 			img += wb;
 		}
 	}
@@ -12484,7 +11775,7 @@ void LoadJPG (char *name, byte **pic, int *width, int *height)
 void PngReadFunc(png_struct *Png, png_bytep buf, png_size_t size)
 {
 	TPngFileBuffer *PngFileBuffer=(TPngFileBuffer*)png_get_io_ptr(Png);
-	Memcpy(buf,PngFileBuffer->Buffer+PngFileBuffer->Pos,size);
+	memcpy(buf,PngFileBuffer->Buffer+PngFileBuffer->Pos,size);
 	PngFileBuffer->Pos+=size;
 }
 
@@ -12550,7 +11841,7 @@ void LoadPNG (char *name, byte **pic, int *width, int *height, int *bits)
 
 	png_read_info(png_ptr, info_ptr);
 
-	if (info_ptr->height > MAX_TEXTURE_SIZE || info_ptr->height > MAX_TEXTURE_SIZE)
+	if (png_get_image_height(png_ptr, info_ptr) > MAX_TEXTURE_SIZE)
 	{
         png_destroy_read_struct(&png_ptr, &info_ptr, (png_infopp)NULL);
 		Z_Free (PngFileBuffer.Buffer);
@@ -12558,28 +11849,28 @@ void LoadPNG (char *name, byte **pic, int *width, int *height, int *bits)
 		return;
 	}
 
-	if (info_ptr->color_type == PNG_COLOR_TYPE_PALETTE)
+	if (png_get_color_type(png_ptr, info_ptr) == PNG_COLOR_TYPE_PALETTE)
 	{
 		png_set_palette_to_rgb (png_ptr);
 		png_set_filler(png_ptr, 0xFF, PNG_FILLER_AFTER);
 	}
 
-	if (info_ptr->color_type == PNG_COLOR_TYPE_RGB)
+	if (png_get_color_type(png_ptr, info_ptr) == PNG_COLOR_TYPE_RGB)
 		png_set_filler(png_ptr, 0xFF, PNG_FILLER_AFTER);
 
-	if ((info_ptr->color_type == PNG_COLOR_TYPE_GRAY) && info_ptr->bit_depth < 8)
-		png_set_gray_1_2_4_to_8(png_ptr);
+	if ((png_get_color_type(png_ptr, info_ptr) == PNG_COLOR_TYPE_GRAY) && png_get_bit_depth(png_ptr, info_ptr) < 8)
+		png_set_expand_gray_1_2_4_to_8(png_ptr);
 
 	if (png_get_valid(png_ptr, info_ptr, PNG_INFO_tRNS))
 		png_set_tRNS_to_alpha(png_ptr);
 
-	if (info_ptr->color_type == PNG_COLOR_TYPE_GRAY || info_ptr->color_type == PNG_COLOR_TYPE_GRAY_ALPHA)
+	if (png_get_color_type(png_ptr, info_ptr) == PNG_COLOR_TYPE_GRAY || png_get_color_type(png_ptr, info_ptr) == PNG_COLOR_TYPE_GRAY_ALPHA)
 		png_set_gray_to_rgb(png_ptr);
 
-	if (info_ptr->bit_depth == 16)
+	if (png_get_bit_depth(png_ptr, info_ptr) == 16)
 		png_set_strip_16(png_ptr);
 
-	if (info_ptr->bit_depth < 8)
+	if (png_get_bit_depth(png_ptr, info_ptr) < 8)
         png_set_packing(png_ptr);
 
 	if (png_get_gAMA(png_ptr, info_ptr, &file_gamma))
@@ -12589,18 +11880,18 @@ void LoadPNG (char *name, byte **pic, int *width, int *height, int *bits)
 
 	rowbytes = png_get_rowbytes(png_ptr, info_ptr);
 
-	*pic = (byte*) Z_Malloc (info_ptr->height * rowbytes, true);
+	*pic = (byte*) Z_Malloc (png_get_image_height(png_ptr, info_ptr) * rowbytes, true);
 
-	for (i = 0; i < info_ptr->height; i++)
+	for (i = 0; i < png_get_image_height(png_ptr, info_ptr); i++)
 		row_pointers[i] = *pic + i*rowbytes;
 
 	png_read_image(png_ptr, row_pointers);
 
 	if (width)
-		*width = info_ptr->width;
+		*width = png_get_image_width(png_ptr, info_ptr);
 	if (height)
-		*height = info_ptr->height;
-	*bits = info_ptr->pixel_depth;
+		*height = png_get_image_height(png_ptr, info_ptr);
+	*bits = png_get_bit_depth(png_ptr, info_ptr) * png_get_channels(png_ptr, info_ptr);
 
 	png_read_end(png_ptr, end_info);
 	png_destroy_read_struct(&png_ptr, &info_ptr, &end_info);
@@ -12910,7 +12201,7 @@ void LoadPCX (char *filename, byte **pic, byte **palette, int *width, int *heigh
 	if (palette)
 	{
 		*palette = (byte*) Z_Malloc(768, true);
-		Memcpy (*palette, (byte *)pcx + len - 768, 768);
+		memcpy (*palette, (byte *)pcx + len - 768, 768);
 	}
 
 	if (width)
@@ -12991,10 +12282,10 @@ void LoadWal (char *filename, byte **pic, byte **palette, int *width, int *heigh
 	{
 		*palette = (byte*) Z_Malloc(768, true);
 ///		Init_Palette();
-		Memcpy (*palette, (byte *)d_8to24table, 768);
+		memcpy (*palette, (byte *)d_8to24table, 768);
 	}
 
-	Memcpy (pix, (byte *)mt + ofs, mt->width * mt->height);
+	memcpy (pix, (byte *)mt + ofs, mt->width * mt->height);
 
 	Z_Free (mt);
 }
@@ -13463,7 +12754,7 @@ bool GL_Upload32 (unsigned *data, int width, int height, imagetype_t type, int s
 			glTexImage2D (GL_TEXTURE_2D, 0, comp, scaled_width, scaled_height, 0, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, data);
 			goto done;
 		}
-		Memcpy (scaled, data, width*height*4);
+		memcpy (scaled, data, width*height*4);
 	}
 	else
 		GL_ResampleTexture (data, width, height, scaled, scaled_width, scaled_height, type == it_bump);
@@ -13595,7 +12886,7 @@ void	ParseMaterial(material_t *material, char *s)
 		if (!Q_strcasecmp(token, "decal") && mtr_decal->value)
 		{
 			/// Внимание! Если здесь вызывать загрузку картинки декаля, то словим качественный глюк!!! Не делать этого!
-			Memcpy(material->decal_name, COM_Parse(&s), sizeof(material->decal_name));
+			memcpy(material->decal_name, COM_Parse(&s), sizeof(material->decal_name));
 			continue;
 		}
 		if (!Q_strcasecmp(token, "blend"))
@@ -13607,24 +12898,24 @@ void	ParseMaterial(material_t *material, char *s)
 		if (!Q_strcasecmp(token, "debris") && mtr_debris->value)
 		{
 			/// Внимание! Если здесь вызывать загрузку дебриса, то словим качественный глюк!!! Не делать этого!
-			Memcpy(material->debris_name, COM_Parse(&s), sizeof(material->debris_name));
+			memcpy(material->debris_name, COM_Parse(&s), sizeof(material->debris_name));
 			continue;
 		}
 		if (!Q_strcasecmp(token, "footstep") && mtr_footstep->value)
 		{
-			Memcpy(material->footstep_name, COM_Parse(&s), sizeof(material->footstep_name));
+			memcpy(material->footstep_name, COM_Parse(&s), sizeof(material->footstep_name));
 			continue;
 		}
 		if (mtr_hitsound->value)
 		{
 			if (!Q_strcasecmp(token, "bullethit"))
 			{
-				Memcpy(material->hs_bullet_name, COM_Parse(&s), sizeof(material->hs_bullet_name));
+				memcpy(material->hs_bullet_name, COM_Parse(&s), sizeof(material->hs_bullet_name));
 				continue;
 			}
 			if (!Q_strcasecmp(token, "energyhit"))
 			{
-				Memcpy(material->hs_energy_name, COM_Parse(&s), sizeof(material->hs_energy_name));
+				memcpy(material->hs_energy_name, COM_Parse(&s), sizeof(material->hs_energy_name));
 				continue;
 			}
 		}
@@ -13651,7 +12942,7 @@ material_t	*R_LoadMaterial(char *name, byte *data, unsigned hash)
 	}
 
 	material = &materials[i];
-	Memset(material, 0, sizeof(material_t));
+	memset(material, 0, sizeof(material_t));
 
 	if (strlen(name) >= sizeof(material->name))
 		Com_Error (ERR_DROP, "R_LoadMaterial: \"%s\" is too long", name);
@@ -13737,13 +13028,13 @@ void	ParseFX(image_t *image, char *s)
 		if (!Q_strcasecmp(token, "image"))
 		{
 			/// Внимание! Если здесь вызывать загрузку текстуры, то словим качественный глюк!!! Не делать этого!
-			Memcpy(image->fx_image_name, COM_Parse (&s), sizeof(image->fx_image_name));
+			memcpy(image->fx_image_name, COM_Parse (&s), sizeof(image->fx_image_name));
 			continue;
 		}
 		if (!Q_strcasecmp(token, "detailbump"))
 		{
 			/// Внимание! Если здесь вызывать загрузку текстуры, то словим качественный глюк!!! Не делать этого!
-			Memcpy(image->fx_detail_image_name, COM_Parse (&s), sizeof(image->fx_detail_image_name));
+			memcpy(image->fx_detail_image_name, COM_Parse (&s), sizeof(image->fx_detail_image_name));
 			image->NoDetailBump = false;
 			continue;
 		}
@@ -13939,7 +13230,7 @@ image_t *GL_LoadPic (char *name, char *name0, byte *pic, int width, int height, 
 				if ((width > MAX_TEXTURE_SIZE) || (height > MAX_TEXTURE_SIZE))
 					Com_Error (ERR_DROP, "GL_LoadPic(32): \"%s\" too large", name);
 
-				Memcpy(trans, pic, width*height*4);
+				memcpy(trans, pic, width*height*4);
 			}
 		}
 
@@ -13991,7 +13282,7 @@ image_t *GL_LoadPic (char *name, char *name0, byte *pic, int width, int height, 
 		{
 			if(name0[len-4]=='.')
 			{
-				Memcpy(sname, name0, MAX_QPATH);
+				memcpy(sname, name0, MAX_QPATH);
 				sname[len-4] = 0;
 				len -= 4;
 				name0 = sname;
@@ -14305,7 +13596,7 @@ FS_GetName(fname, name);
 			if(autobump && r_autobump->value)
 			{
 				GenBumpMap ((byte*)&trans[0], tex->width, tex->height, (byte*)&scaled[0]);
-				Memcpy(trans, scaled, sizeof(scaled));
+				memcpy(trans, scaled, sizeof(scaled));
 				image = GL_LoadPic (name, name, (byte*)&trans[0], tex->width, tex->height, it_bump, 32, false, Com_HashKey(name));
 				strcpy(image->name, name);		// Регистрируем картинку под входящим именем
 				return image;
@@ -14761,7 +14052,7 @@ void CL_AddViewWeapon (player_state_t *ps, player_state_t *ops)
 	else
 		offset_down[0] = offset_down[1] = offset_down[2] = offset_right[0] = offset_right[1] = offset_right[2] = 0;
 
-	Memset (&gun, 0, sizeof(gun));
+	memset (&gun, 0, sizeof(gun));
 
 	if (gun_model)
 		gun.model = gun_model;	// development tool
@@ -15029,28 +14320,27 @@ void CL_CalcViewValues ()
 		cl.refdef.fov_x = ops->fov + lerp * (ps->fov - ops->fov);
 
 	// Berserker: client-side zoom
-	if ((cl.refdef.fov_x < 89.9 || cl.refdef.fov_x > 90.1) || cl.attractloop)
-	{	// если FOV != 90 (не установлен флаг "Fixed FOV") или проигрывается демо
-		float delta = (Sys_Milliseconds() - fov_time);	// Дельта FOV, основано на интервале времени от предыдущего до текущего клиентского кадра.
-														// (Даже не пришлось умножать на scale, скорость смены FOV отличная. Сделать цвар?)
-		if ( in_zoom.state & 3 )
-		{	// +zoom
-			float dfov = cl.refdef.fov_x - zoomfov->value;
-			if (dfov > 0)
-			{
-				fov_delta += delta;
-				if (fov_delta > dfov)
-					fov_delta = dfov;
-			}
+	// если FOV != 90 (не установлен флаг "Fixed FOV") или проигрывается демо
+	float delta = ((Sys_Milliseconds() - fov_time) * zoomspeed->value);	// Дельта FOV, основано на интервале времени от предыдущего до текущего клиентского кадра.
+													// (Даже не пришлось умножать на scale, скорость смены FOV отличная. Сделать цвар?)
+													// UCyborg: cvar created :)
+	if (in_zoom.state & 3)
+	{	// +zoom
+		float dfov = cl.refdef.fov_x - zoomfov->value;
+		if (dfov > 0)
+		{
+			fov_delta += delta;
+			if (fov_delta > dfov)
+				fov_delta = dfov;
 		}
-		else
-		{	// -zoom
-			fov_delta -= delta;
-			if (fov_delta < 0)
-				fov_delta = 0;
-		}
-		cl.refdef.fov_x -= fov_delta;
 	}
+	else
+	{	// -zoom
+		fov_delta -= delta;
+		if (fov_delta < 0)
+			fov_delta = 0;
+	}
+	cl.refdef.fov_x -= fov_delta;
 	in_zoom.state &= ~2;
 	fov_time = Sys_Milliseconds ();
 
@@ -15161,6 +14451,7 @@ const char *M_Credits_Key( int key )
 {
 	switch (key)
 	{
+	case K_MOUSE2:
 	case K_ESCAPE:
 		M_FreeCredits();
 		M_PopMenu ();
@@ -16461,7 +15752,7 @@ void AddAliasModel (alink_t *alias, blink_t *brush, vec3_t neworg, vec3_t newang
 	vec3_t		org, temp, tempang;
 	vec3_t		forward, right, up;
 
-	Memset (&ent, 0, sizeof(ent));
+	memset (&ent, 0, sizeof(ent));
 
 	ent.model = alias->mdl;
 	if(!ent.model)
@@ -16984,7 +16275,7 @@ void CL_AddPacketEntities (frame_t *frame)
 	// brush models can auto animate their frames
 	autoanim = 2 * cl.time/1000;
 
-	Memset (&ent, 0, sizeof(ent));
+	memset (&ent, 0, sizeof(ent));
 
 	for (pnum = 0 ; pnum<frame->num_entities ; pnum++)
 	{
@@ -17728,7 +17019,7 @@ void PlayerConfig_MenuDraw()
 
 	char scratch[MAX_QPATH];
 
-	Memset( &refdef, 0, sizeof( refdef ) );
+	memset( &refdef, 0, sizeof( refdef ) );
 
 	refdef.x = viddef.width / 2;
 	refdef.y = viddef.height / 2 - 142;
@@ -17745,7 +17036,7 @@ void PlayerConfig_MenuDraw()
 
 		entity_t entity[2];
 
-		Memset( &entity[0], 0, sizeof( entity[0] ) );
+		memset( &entity[0], 0, sizeof( entity[0] ) );
 
 		Com_sprintf( scratch, sizeof( scratch ), "players/%s/tris.md2", s_pmi[s_player_model_box.curvalue].directory );
 		entity[0].model = R_RegisterModel( scratch, 1, false );
@@ -17772,7 +17063,7 @@ void PlayerConfig_MenuDraw()
 		entity[0].backlerp = 1.0-((float)(cls.realtime & 0xff))/255.0;
 
 /// set up weapon model
-		Memset( &entity[1], 0, sizeof( entity[1] ) );
+		memset( &entity[1], 0, sizeof( entity[1] ) );
 
 		if (currentPlayerWeapon && cls.state == ca_active)
 		{
@@ -17836,7 +17127,7 @@ void PlayerConfig_MenuDraw()
 
 		/// Light setup
 		currentshadowlight = &m_light;
-		Memset(currentshadowlight, 0, sizeof(shadowlight_t));
+		memset(currentshadowlight, 0, sizeof(shadowlight_t));
 		VectorSet(currentshadowlight->origin, -100, 100, 76);
 ///		VectorSet(currentshadowlight->color, 1,1,1);
 		float v = scr_3dhud_intensity->value;
@@ -17918,7 +17209,7 @@ void CL_AddBeams ()
 	// add new entities for the beams
 		d = VectorNormalize(dist);
 
-		Memset (&ent, 0, sizeof(ent));
+		memset (&ent, 0, sizeof(ent));
 		if (b->model == cl_mod_lightning)
 		{
 			model_length = 35.0;
@@ -17983,7 +17274,7 @@ void CL_AddExplosions ()
 	float		frac;
 	int			f;
 
-///	Memset (&ent, 0, sizeof(ent));
+///	memset (&ent, 0, sizeof(ent));
 
 	for (i=0, ex=cl_explosions ; i< MAX_EXPLOSIONS ; i++, ex++)
 	{
@@ -18393,7 +17684,7 @@ void CL_AddPlayerBeams ()
 	// add new entities for the beams
 		d = VectorNormalize(dist);
 
-		Memset (&ent, 0, sizeof(ent));
+		memset (&ent, 0, sizeof(ent));
 		if (b->model == cl_mod_heatbeam)
 		{
 			model_length = 32.0;
@@ -18621,11 +17912,11 @@ void CL_ParseClientinfo (int player)
 	if (hack)
 	{
 		char clname[MAX_QPATH];
-		t = strstr(cl.configstrings[player+cs_playerskins], "\\");
+		t = strchr(cl.configstrings[player+cs_playerskins], '\\');
 		len = t - cl.configstrings[player+cs_playerskins];
 		if (len>=sizeof(clname))
 			len=sizeof(clname)-1;
-		Memset(clname, 0, len+1);
+		memset(clname, 0, len+1);
 		strncpy(clname, cl.configstrings[player+cs_playerskins], len);
 		Com_sprintf (mymodel, sizeof(mymodel), "%s\\%s", clname, skin->string);
 		s = mymodel;
@@ -18798,7 +18089,7 @@ void CL_AddParticles ()
 			if (trace.fraction > 0 && trace.fraction < 1)
 			{
 				vec3_t	vel;
-				float time = cl.gameTime - (cls.frametime + cls.frametime * trace.fraction) * 1000;
+				float time = cl.gameTime - (cls.renderFrameTime + cls.renderFrameTime * trace.fraction) * 1000;
 				time = (time - p->time) * 0.001;
 
 				VectorSet(vel, p->vel[0], p->vel[1], p->vel[2] + p->accel[2] * time * grav);
@@ -18876,7 +18167,7 @@ void CL_AddClEntities ()
 	// Berserker: smart remover
 	if (cls.state == ca_active && !cl_paused->value && !m_menudepth)
 	{
-		if (cl_maxfps->value >= r_fpsThreshold->value)
+		if ((cl_async->value ? r_maxfps->value : cl_maxfps->value) >= r_fpsThreshold->value)
 		{
 			if (fps_refreshed && r_fpsThreshold->value > 0)
 			{
@@ -18915,7 +18206,7 @@ void CL_AddClEntities ()
 	active = NULL;
 	tail = NULL;
 
-	Memset (&ent, 0, sizeof(ent));
+	memset (&ent, 0, sizeof(ent));
 	if(!r_teshadows->value)
 		flag_mask = RF_NOCASTSHADOW;
 	else
@@ -19048,7 +18339,7 @@ void CL_AddClEntities ()
 			if (trace.fraction > 0 && trace.fraction < 1)
 			{
 				vec3_t	vel;
-				float time = cl.leveltime - cls.frametime + cls.frametime * trace.fraction - p->time;
+				float time = cl.leveltime - cls.renderFrameTime + cls.renderFrameTime * trace.fraction - p->time;
 
 				VectorSet(vel, p->vel[0], p->vel[1], p->vel[2] + p->accel[2] * time * grav);
 				VectorReflect(vel, trace.plane.normal, p->vel);
@@ -19244,7 +18535,7 @@ void CL_AddLocalEntities ()
 		if (!strcmp(amdl_list[am].label, "SkyModel"))
 		{
 			amdl_list[am].nouse = true;
-			Memset (&ent, 0, sizeof(ent));
+			memset (&ent, 0, sizeof(ent));
 			ent.model = amdl_list[am].mdl;
 			if (!ent.model)
 				continue;
@@ -19306,7 +18597,7 @@ noanim:			ent.frame = amdl_list[am].frame;
 			if (!HasSharedLeafs (amdl_list[am].vis, viewvis__))
 				continue;
 
-			Memset (&ent, 0, sizeof(ent));
+			memset (&ent, 0, sizeof(ent));
 			ent.model = amdl_list[am].mdl;
 			VectorCopy(amdl_list[am].origin, ent.origin);
 			VectorCopy(amdl_list[am].angles, ent.angles);
@@ -19420,21 +18711,21 @@ void CL_ComputeVis()
 	}
 
 	if (/*r_novis->value ||*/ r_viewcluster__ == -1 || !r_worldmodel->vis)
-		Memset(&viewvis, 0xff, (r_worldmodel->numleafs+7)>>3);	// all visible
+		memset(&viewvis, 0xff, (r_worldmodel->numleafs+7)>>3);	// all visible
 	else
 	{
 		vis = Mod_ClusterPVS (r_viewcluster__, r_worldmodel);
 		// may have to combine two clusters because of solid water boundaries
 		if (r_viewcluster2__ != r_viewcluster__)
 		{
-			Memcpy (fatvis, vis, (r_worldmodel->numleafs+7)>>3);
+			memcpy (fatvis, vis, (r_worldmodel->numleafs+7)>>3);
 			vis = Mod_ClusterPVS (r_viewcluster2__, r_worldmodel);
 			c = (r_worldmodel->numleafs+31)/32;
 			for (i=0 ; i<c ; i++)
 				((int *)fatvis)[i] |= ((int *)vis)[i];
 			vis = fatvis;
 		}
-		Memcpy(&viewvis__, vis, (r_worldmodel->numleafs+7)>>3);
+		memcpy(&viewvis__, vis, (r_worldmodel->numleafs+7)>>3);
 	}
 }
 
@@ -19499,7 +18790,7 @@ void CL_ParseFrame ()
 	int			len;
 	frame_t		*old;
 
-	Memset (&cl.frame, 0, sizeof(cl.frame));
+	memset (&cl.frame, 0, sizeof(cl.frame));
 
 	cl.frame.serverframe = MSG_ReadLong (&net_message);
 	cl.frame.deltaframe = MSG_ReadLong (&net_message);
@@ -19579,6 +18870,8 @@ void CL_ParseFrame ()
 		if (cls.state != ca_active)
 		{
 			cls.state = ca_active;
+			if (cls.key_dest != key_menu)
+				cls.key_dest = key_game;
 
 			//r1: fix for precision loss with high serverframes (when map runs for over several hours)
 			cl.initial_server_frame = cl.frame.serverframe;
@@ -19607,9 +18900,9 @@ int entitycmpfnc( const entity_t *a, const entity_t *b )
 {
 	// all other models are sorted by model then skin
 	if ( a->model == b->model )
-		return ( ( int ) a->skin - ( int ) b->skin );
+		return (int)( ( ptrdiff_t ) a->skin - ( ptrdiff_t ) b->skin );
 	else
-		return ( ( int ) a->model - ( int ) b->model );
+		return (int)( ( ptrdiff_t ) a->model - ( ptrdiff_t ) b->model );
 }
 
 void Draw_GetPicSize (int *w, int *h, char *pic)
@@ -19726,7 +19019,7 @@ bool R_MarkEntityLeaves(entity_t *ent, byte *fatvis)
 
 	areas[8] = CM_LeafArea (CM_PointLeafnum (ent->origin));
 
-	Memset(fatvis, 0, (((r_worldmodel->numleafs+31)>>5)<<2)/*MAX_MAP_LEAFS/8*/);
+	memset(fatvis, 0, (((r_worldmodel->numleafs+31)>>5)<<2)/*MAX_MAP_LEAFS/8*/);
 	for (j=0; j<8; j++)
 	{
 		vec3_t	mins_, maxs_;
@@ -19757,7 +19050,7 @@ bool R_MarkEntityLeaves(entity_t *ent, byte *fatvis)
 		}
 
 		// строим vis-data
-		Memcpy (vis_, CM_ClusterPVS(CM_LeafCluster (CM_PointLeafnum (org))), (((numclusters+31)>>5)<<2));
+		memcpy (vis_, CM_ClusterPVS(CM_LeafCluster (CM_PointLeafnum (org))), (((numclusters+31)>>5)<<2));
 		count = CM_BoxLeafnums (mins_, maxs_, leafs, r_worldmodel->numleafs/*MAX_MAP_LEAFS*/, NULL);
 		if (count < 1)
 			Com_Error (ERR_FATAL, "R_MarkEntityLeaves: count < 1");
@@ -19767,15 +19060,15 @@ bool R_MarkEntityLeaves(entity_t *ent, byte *fatvis)
 		for (i=0 ; i<count ; i++)
 			leafs[i] = CM_LeafCluster(leafs[i]);
 
-		Memset(&vis, 0, (((r_worldmodel->numleafs+31)>>5)<<2)/*MAX_MAP_LEAFS/8*/);
+		memset(&vis, 0, (((r_worldmodel->numleafs+31)>>5)<<2)/*MAX_MAP_LEAFS/8*/);
 		for (i=0 ; i<count ; i++)
 			vis[leafs[i]>>3] |= (1<<(leafs[i]&7));
 		// вырезаем кластеры, которых нет в списке leafs
 		for (i=0 ; i<((r_worldmodel->numleafs+31)>>5)/*MAX_MAP_LEAFS/32*/ ; i++)
-			((long *)vis_)[i] &= ((long *)vis)[i];
+			((int *)vis_)[i] &= ((int *)vis)[i];
 		// копируем результат в fatvis
 		for (i=0 ; i<longs ; i++)
-			((long *)fatvis)[i] |= ((long *)vis_)[i];
+			((int *)fatvis)[i] |= ((int *)vis_)[i];
 	}
 	return (areas[0] || areas[1] || areas[2] || areas[3] || areas[4] || areas[5] || areas[6] || areas[7] || areas[8]);
 }
@@ -19798,7 +19091,7 @@ bool R_MarkEmitLeaves(emit_t *emit, byte *fatvis)
 
 	areas[8] = CM_LeafArea (CM_PointLeafnum (emit->origin));
 
-	Memset(fatvis, 0, (((r_worldmodel->numleafs+31)>>5)<<2)/*MAX_MAP_LEAFS/8*/);
+	memset(fatvis, 0, (((r_worldmodel->numleafs+31)>>5)<<2)/*MAX_MAP_LEAFS/8*/);
 	for (j=0; j<8; j++)
 	{
 		vec3_t	mins_, maxs_;
@@ -19829,7 +19122,7 @@ bool R_MarkEmitLeaves(emit_t *emit, byte *fatvis)
 		}
 
 		// строим vis-data
-		Memcpy (vis_, CM_ClusterPVS(CM_LeafCluster (CM_PointLeafnum (org))), (((numclusters+31)>>5)<<2));
+		memcpy (vis_, CM_ClusterPVS(CM_LeafCluster (CM_PointLeafnum (org))), (((numclusters+31)>>5)<<2));
 		count = CM_BoxLeafnums (mins_, maxs_, leafs, r_worldmodel->numleafs/*MAX_MAP_LEAFS*/, NULL);
 		if (count < 1)
 			Com_Error (ERR_FATAL, "R_MarkEmitLeaves: count < 1");
@@ -19839,15 +19132,15 @@ bool R_MarkEmitLeaves(emit_t *emit, byte *fatvis)
 		for (i=0 ; i<count ; i++)
 			leafs[i] = CM_LeafCluster(leafs[i]);
 
-		Memset(&vis, 0, (((r_worldmodel->numleafs+31)>>5)<<2)/*MAX_MAP_LEAFS/8*/);
+		memset(&vis, 0, (((r_worldmodel->numleafs+31)>>5)<<2)/*MAX_MAP_LEAFS/8*/);
 		for (i=0 ; i<count ; i++)
 			vis[leafs[i]>>3] |= (1<<(leafs[i]&7));
 		// вырезаем кластеры, которых нет в списке leafs
 		for (i=0 ; i<((r_worldmodel->numleafs+31)>>5)/*MAX_MAP_LEAFS/32*/ ; i++)
-			((long *)vis_)[i] &= ((long *)vis)[i];
+			((int *)vis_)[i] &= ((int *)vis)[i];
 		// копируем результат в fatvis
 		for (i=0 ; i<longs ; i++)
-			((long *)fatvis)[i] |= ((long *)vis_)[i];
+			((int *)fatvis)[i] |= ((int *)vis_)[i];
 	}
 	return (areas[0] || areas[1] || areas[2] || areas[3] || areas[4] || areas[5] || areas[6] || areas[7] || areas[8]);
 }
@@ -19958,11 +19251,12 @@ int entityDistcmpfnc( const entity_t *a, const entity_t *b )
 
 int entityDistcmpfnc2( const entity_t *a, const entity_t *b )
 {
-	int	skna, sknb, dsta, dstb;
+	ptrdiff_t	skna, sknb;
+	int			dsta, dstb;
 
 	// all other models are sorted by skin then distance
-	skna = ( int ) a->skin;
-	sknb = ( int ) b->skin;
+	skna = ( ptrdiff_t ) a->skin;
+	sknb = ( ptrdiff_t ) b->skin;
 	dsta = ( int ) a->dist;
 	dstb = ( int ) b->dist;
 
@@ -20237,8 +19531,8 @@ void Con_CheckResize ()
 		width = 38;
 		con.linewidth = width;
 		con.totallines = CON_TEXTSIZE / con.linewidth;
-		Memset (con.text, ' ', CON_TEXTSIZE);
-		Memset (con.color, 7, CON_TEXTSIZE);
+		memset (con.text, ' ', CON_TEXTSIZE);
+		memset (con.color, 7, CON_TEXTSIZE);
 	}
 	else
 	{
@@ -20256,10 +19550,10 @@ void Con_CheckResize ()
 		if (con.linewidth < numchars)
 			numchars = con.linewidth;
 
-		Memcpy (tbuf, con.text, CON_TEXTSIZE);
-		Memcpy (cbuf, con.color, CON_TEXTSIZE);
-		Memset (con.text, ' ', CON_TEXTSIZE);
-		Memset (con.color, 7, CON_TEXTSIZE);
+		memcpy (tbuf, con.text, CON_TEXTSIZE);
+		memcpy (cbuf, con.color, CON_TEXTSIZE);
+		memset (con.text, ' ', CON_TEXTSIZE);
+		memset (con.color, 7, CON_TEXTSIZE);
 
 		for (i=0 ; i<numlines ; i++)
 		{
@@ -20964,22 +20258,7 @@ void Con_DrawNotify ()
 	GL_Color3f(1,1,1);
 	gl_TexEnv( GL_REPLACE );
 
-	if (cls.key_dest == key_get)
-	{
-		cvar_t *getmess = Cvar_Get("get_message", ">", 0);
-		getmess->help = "special cvar, contains the message using in GET command.";
-		int l = strlen(getmess->string);
-		if (l)
-			DrawString (16, v<<1, getmess->string);
-		else
-		{
-			DrawString (16, v<<1, ">");
-			l = 1;
-		}
-		skip = l + 1;
-		goto nxt;
-	}
-	else if (cls.key_dest == key_message)
+	if (cls.key_dest == key_message)
 	{
 		if (chat_team)
 		{
@@ -20992,7 +20271,7 @@ void Con_DrawNotify ()
 			skip = 5;
 		}
 
-nxt:	s = chat_buffer;
+		s = chat_buffer;
 		if (chat_bufferlen > (viddef.width>>3)-(skip+1))
 			s += chat_bufferlen - ((viddef.width>>3)-(skip+1));
 		x = 0;
@@ -21043,6 +20322,41 @@ void Draw_Fill (int x, int y, int w, int h, byte r, byte g, byte b)
 }
 
 
+/*
+==================
+SCR_RunConsole
+
+Scroll it up or down
+==================
+*/
+void SCR_RunConsole ()
+{
+// decide on the height of the console
+	if (cls.key_dest == key_console)
+		scr_conlines = 0.5;		// half screen
+	else
+		scr_conlines = 0;				// none visible
+
+////	if (cl.attractloop || cin.pic[0])			/// Berserker: во время демо или показа картинки
+////		scr_con_current = scr_conlines = 0;		/// консоль НЕ ВИДНА!!!
+
+	if (scr_conlines < scr_con_current)
+	{
+		scr_con_current -= scr_conspeed->value*cls.renderFrameTime;
+		if (scr_conlines > scr_con_current)
+			scr_con_current = scr_conlines;
+
+	}
+	else if (scr_conlines > scr_con_current)
+	{
+		scr_con_current += scr_conspeed->value*cls.renderFrameTime;
+		if (scr_conlines < scr_con_current)
+			scr_con_current = scr_conlines;
+	}
+
+}
+
+
 void SCR_DrawConsole ()
 {
 	Con_CheckResize ();
@@ -21064,7 +20378,7 @@ void SCR_DrawConsole ()
 	if (scr_con_current)
 		Con_DrawConsole (scr_con_current);
 	else
-		if (cls.key_dest == key_game || cls.key_dest == key_message || cls.key_dest == key_get)
+		if (cls.key_dest == key_game || cls.key_dest == key_message)
 			Con_DrawNotify ();	// only draw notify in game
 }
 
@@ -21989,7 +21303,7 @@ void SCR_DrawCenterString ()
 
 void SCR_CheckDrawCenterString ()
 {
-	scr_centertime_off -= cls.frametime;
+	scr_centertime_off -= cls.renderFrameTime;
 
 	if (scr_centertime_off <= 0)
 		return;
@@ -22166,7 +21480,7 @@ void CL_PasteCur_f ()
 			return;
 
 		VectorCopy(curlink->origin, bak);
-		Memcpy(curlink, &link_clipboard, sizeof(llink_t));
+		memcpy(curlink, &link_clipboard, sizeof(llink_t));
 		VectorCopy(bak, curlink->origin);
 	}
 	else
@@ -22178,7 +21492,7 @@ void CL_PasteCur_f ()
 			return;
 
 		VectorCopy(curlight->origin, bak);
-		Memcpy(curlight, &light_clipboard, sizeof(shadowlight_t));
+		memcpy(curlight, &light_clipboard, sizeof(shadowlight_t));
 		VectorCopy(bak, curlight->origin);
 
 // После изменения параметров требуется пересчитать некоторые параметры!
@@ -22302,7 +21616,7 @@ void SV_WritePlayerstateToClient (client_frame_t *from, client_frame_t *to, size
 	ps = &to->ps;
 	if (!from)
 	{
-		Memset (&dummy, 0, sizeof(dummy));
+		memset (&dummy, 0, sizeof(dummy));
 		ops = &dummy;
 	}
 	else
@@ -22656,7 +21970,7 @@ void CL_ParsePlayerstate (frame_t *oldframe, frame_t *newframe)
 	if (oldframe)
 		*state = oldframe->playerstate;
 	else
-		Memset (state, 0, sizeof(*state));
+		memset (state, 0, sizeof(*state));
 
 	flags = MSG_ReadShort (&net_message);
 	if ((flags & PS_EPS) && !old)
@@ -23308,7 +22622,7 @@ void GetSurfaceColor(float *or, float *og, float *ob, trace_t *otrace)
 		}
 	}
 	if (otrace)
-		Memcpy(otrace, &trace, sizeof(trace_t));
+		memcpy(otrace, &trace, sizeof(trace_t));
 }
 
 void DrawQuickSavedShot(void *m)
@@ -23325,8 +22639,6 @@ void DrawQuickSavedShot(void *m)
 	i = menu->generic.localdata[0];
 	if (m_savevalid[i])
 	{
-		// UCyborg: wut?
-//		strcpy(mapfile, va("pics/../%s/quick%i/shot.tga", savdir, i/*m_saveshots[i]*/));
 		strcpy(mapfile, va("%s/quick%i/shot.tga", savdir, i/*m_saveshots[i]*/));
 		R_FreePic(mapfile);
 		FS_ClearFileCache(mapfile);
@@ -23353,8 +22665,6 @@ void DrawSavedShot(void *m)
 	{
 		if (i)
 		{
-			// UCyborg: wut?
-//			strcpy(mapfile, va("pics/../%s/save%i/shot.tga", savdir, i/*m_saveshots[i]*/));
 			strcpy(mapfile, va("%s/save%i/shot.tga", savdir, i/*m_saveshots[i]*/));
 			R_FreePic(mapfile);
 			FS_ClearFileCache(mapfile);
@@ -23633,9 +22943,9 @@ void R_Draw3DHud()
 
 	drawed = 0;
 	currentshadowlight = &m_light;
-	Memset( &refdef, 0, sizeof( refdef ) );
-	Memset( &entity, 0, sizeof( entity ) );
-	Memset(currentshadowlight, 0, sizeof(shadowlight_t));
+	memset( &refdef, 0, sizeof( refdef ) );
+	memset( &entity, 0, sizeof( entity ) );
+	memset(currentshadowlight, 0, sizeof(shadowlight_t));
 
 	refdef.viewangles[0] = 23;
 	refdef.fov_x = 45;
@@ -24140,7 +23450,7 @@ void SCR_Draw2D()
 			length = FS_LoadFile (name, (void **)&buffer);
 			if (buffer && length < sizeof(editor_layoutstring) && length > 0)
 			{
-				Memcpy(editor_layoutstring, buffer, length);
+				memcpy(editor_layoutstring, buffer, length);
 				editor_layoutstring[length] = 0;
 				Z_Free(buffer);
 			}
@@ -24341,11 +23651,11 @@ void CL_ResetEditor()
 	curfog = NULL;
 	curtexinfo = NULL;
 	curtri = curmesh = curbrushnum = 0;
-	Memset(&light_clipboard, 0, sizeof(light_clipboard));
-	Memset(&link_clipboard, 0, sizeof(link_clipboard));
-	Memset(&emit_clipboard, 0, sizeof(emit_clipboard));
-	Memset(&decal_clipboard, 0, sizeof(decal_clipboard));
-	Memset(&model_clipboard, 0, sizeof(model_clipboard));
+	memset(&light_clipboard, 0, sizeof(light_clipboard));
+	memset(&link_clipboard, 0, sizeof(link_clipboard));
+	memset(&emit_clipboard, 0, sizeof(emit_clipboard));
+	memset(&decal_clipboard, 0, sizeof(decal_clipboard));
+	memset(&model_clipboard, 0, sizeof(model_clipboard));
 	Cl_UpdateEditorCvars(ED_LIGHT | ED_EMIT | ED_DECAL | ED_FOG | ED_MODEL | ED_BRUSH | ED_AMBIENT);
 }
 
@@ -24848,13 +24158,13 @@ void Key_Console (int key)
 		return;
 	}
 
-	if (key == K_PGUP || key == K_KP_PGUP )
+	if (key == K_PGUP || key == K_KP_PGUP || key == K_MWHEELUP )
 	{
 		con.display -= 2;
 		return;
 	}
 
-	if (key == K_PGDN || key == K_KP_PGDN )
+	if (key == K_PGDN || key == K_KP_PGDN || key == K_MWHEELDOWN )
 	{
 		con.display += 2;
 		if (con.display > con.current)
@@ -24909,19 +24219,11 @@ void Key_Event (int key, bool down)
 	char	*kb;
 	char	cmd[1024];
 
-	// hack for modal presses
-	if (key_waiting == -1)
-	{
-		if (down)
-			key_waiting = key;
-		return;
-	}
-
 	// update auto-repeat status
 	if (down)
 	{
 		key_repeats[key]++;
-		if (m_menudepth)
+		if (cls.key_dest != key_game)
 		{
 			if (key != K_BACKSPACE
 				&& key != K_PAUSE
@@ -24930,7 +24232,7 @@ void Key_Event (int key, bool down)
 				&& key != K_PGDN
 				&& key != K_KP_PGDN
 				// Berserker: если находимся в меню, добавим также автоповтор курсорных клавишь
-			 	&& key != K_LEFTARROW
+				&& key != K_LEFTARROW
 				&& key != K_RIGHTARROW
 				&& key != K_UPARROW
 				&& key != K_DOWNARROW
@@ -24938,23 +24240,23 @@ void Key_Event (int key, bool down)
 				&& key != K_KP_RIGHTARROW
 				&& key != K_KP_UPARROW
 				&& key != K_KP_DOWNARROW
-				//
+				// need auto-repeat for letters when typing
+				&& key < 32
+				&& key > 127
 				&& key_repeats[key] > 1)
 				return;	// ignore most autorepeats
 		}
-		else
+		else if (key_repeats[key] > 1)
+			return;	// ignore most autorepeats
+
+		if (keydown[K_ALT] && key == K_ENTER)
 		{
-			if (key != K_BACKSPACE
-				&& key != K_PAUSE
-				&& key != K_PGUP
-				&& key != K_KP_PGUP
-				&& key != K_PGDN
-				&& key != K_KP_PGDN
-				&& key_repeats[key] > 1)
-				return;	// ignore most autorepeats
+			Cvar_SetValue("r_fullscreen", !r_fullscreen->value);
+			vid_restart = true;
+			return;
 		}
 
-		if (key >= 200 && !keybindings[key])
+		if (key >= 200 && !keybindings[key] && cls.key_dest == key_game)
 			Com_Printf ("^3%s is unbound, hit F4 to set.\n", Key_KeynumToString (key) );
 	}
 	else
@@ -24994,9 +24296,6 @@ void Key_Event (int key, bool down)
 		case key_console:
 			M_Menu_Main_f ();
 			break;
-		case key_get:
-			Key_Get (key);
-			break;
 		default:
 			Com_Error (ERR_FATAL, "Bad cls.key_dest");
 		}
@@ -25017,9 +24316,6 @@ void Key_Event (int key, bool down)
 			anykeydown = 0;
 	}
 
-	if (cls.key_dest != key_game)
-		ClearKeys();
-
 //
 // key up events only generate commands if the game key binding is
 // a button command (leading + sign).  These will occur even in console mode,
@@ -25029,9 +24325,9 @@ void Key_Event (int key, bool down)
 //
 	if (!down)
 	{	//// Berserker: добавил такую же проверку, что чуть ниже, чтобы нажатия клавишь не вызывало срабатывания bind при нахождении в консоли
-		if ( (cls.key_dest == key_menu && menubound[key])
-		|| (cls.key_dest == key_console && !consolekeys[key])
-		|| (cls.key_dest == key_game && ( cls.state == ca_active || !consolekeys[key] ) ) )
+///		if ( (cls.key_dest == key_menu && menubound[key])
+///		|| (cls.key_dest == key_console && !consolekeys[key])
+///		|| (cls.key_dest == key_game) )
 		////
 		{
 			kb = keybindings[key];
@@ -25059,7 +24355,7 @@ void Key_Event (int key, bool down)
 	if (!bind_grab)		/// Berserker: Fixed Q2 bug - невозможно было назначить клавишам типа F5 функцию...
 		if ( (cls.key_dest == key_menu && menubound[key])
 		|| (cls.key_dest == key_console && !consolekeys[key])
-		|| (cls.key_dest == key_game && ( cls.state == ca_active || !consolekeys[key] ) ) )
+		|| (cls.key_dest == key_game) )
 		{
 			kb = keybindings[key];
 			if (kb)
@@ -25092,12 +24388,8 @@ void Key_Event (int key, bool down)
 	case key_menu:
 		M_Keydown (key);
 		break;
-	case key_game:
 	case key_console:
 		Key_Console (key);
-		break;
-	case key_get:
-		Key_Get (key);
 		break;
 	default:
 		Com_Error (ERR_FATAL, "Bad cls.key_dest");
@@ -25160,19 +24452,14 @@ void Con_ToggleConsole_f ()
 	{
 		char	*v;								/// Berserker: при обычном просмотре demo/pic - nextserver пуст, поэтому позволим при вызове консоли убить сервер (demo/pic)
 		v = Cvar_VariableString ("nextserver");	/// Но если смотрим demo/pic с nextserver (это проигрывается игровая demo/pic с последующим вызовом карты) - то консоль недоступна! (Иначе можно убить игру вызвав консоль)
-		if (!v[0])
-		{
-			Cbuf_AddText ("killserver\n");
-			return;
-		}
+		if (!v[0] && cls.key_dest != key_console)
+			Cbuf_AddText("killserver\n");
 	}
 
 	if (cls.state == ca_disconnected && !m_menudepth)
 	{
 		// start the demo loop again
 		Cbuf_AddText ("d1\n");
-		M_ForceMenuOff ();
-		Cvar_Set ("paused", "0");
 		return;
 	}
 
@@ -25182,7 +24469,6 @@ void Con_ToggleConsole_f ()
 	if (cls.key_dest == key_console)
 	{
 		M_ForceMenuOff ();
-		Cvar_Set ("paused", "0");
 	}
 	else
 	{
@@ -25293,7 +24579,7 @@ void CL_Stop_f ()
 
 void NetadrToSockadr (netadr_t *a, struct sockaddr *s)
 {
-	Memset (s, 0, sizeof(*s));
+	memset (s, 0, sizeof(*s));
 
 	if (a->type == NA_BROADCAST)
 	{
@@ -25396,7 +24682,7 @@ bool	NET_StringToSockaddr (char *s, struct sockaddr *sadr)
 	char	*colon;
 	char	copy[128];
 
-	Memset (sadr, 0, sizeof(*sadr));
+	memset (sadr, 0, sizeof(*sadr));
 
 	((struct sockaddr_in *)sadr)->sin_family = AF_INET;
 	((struct sockaddr_in *)sadr)->sin_port = 0;
@@ -25442,7 +24728,7 @@ bool	NET_StringToAdr (char *s, netadr_t *a)
 
 	if (!strcmp (s, "localhost"))
 	{
-		Memset (a, 0, sizeof(*a));
+		memset (a, 0, sizeof(*a));
 		a->type = NA_LOOPBACK;
 		return true;
 	}
@@ -26189,7 +25475,7 @@ void MSG_ReadDeltaUsercmd (sizebuf_t *msg_read, usercmd_t *from, usercmd_t *move
 {
 	int bits;
 
-	Memcpy (move, from, sizeof(*move));
+	memcpy (move, from, sizeof(*move));
 
 	bits = MSG_ReadByte (msg_read);
 
@@ -26234,7 +25520,7 @@ void NET_SendLoopPacket (netsrc_t sock, int length, void *data, netadr_t to)
 	i = loop->send & (MAX_LOOPBACK-1);
 	loop->send++;
 
-	Memcpy (loop->msgs[i].data, data, length);
+	memcpy (loop->msgs[i].data, data, length);
 	loop->msgs[i].datalen = length;
 }
 
@@ -26255,9 +25541,9 @@ bool	NET_GetLoopPacket (netsrc_t sock, netadr_t *net_from, sizebuf_t *net_messag
 	i = loop->get & (MAX_LOOPBACK-1);
 	loop->get++;
 
-	Memcpy (net_message->data, loop->msgs[i].data, loop->msgs[i].datalen);
+	memcpy (net_message->data, loop->msgs[i].data, loop->msgs[i].datalen);
 	net_message->cursize = loop->msgs[i].datalen;
-	Memset (net_from, 0, sizeof(*net_from));
+	memset (net_from, 0, sizeof(*net_from));
 	net_from->type = NA_LOOPBACK;
 	return true;
 
@@ -26337,7 +25623,7 @@ bool NET_GetPacket (netsrc_t sock, netadr_t *net_from, sizebuf_t *net_message)
 
 	net_socket = ip_sockets[sock];
 
-	if (!net_socket)
+	if (net_socket == -1)
 		return false;
 
 	fromlen = sizeof(from);
@@ -26373,7 +25659,7 @@ bool NET_GetPacket (netsrc_t sock, netadr_t *net_from, sizebuf_t *net_message)
 			if (b0==(ret & 0xff) && b1==((ret>>8) & 0xff))
 			{
 				int unp = ZLibDecompress (&compressed_frame[ZHEADERLEN], ret - ZHEADERLEN, buff_out, ZBUFFLEN, -15);
-				Memcpy(net_message->data, buff_out, unp);
+				memcpy(net_message->data, buff_out, unp);
 				saved___ -= unp;
 				if (net_traffic->value)
 					Com_Printf("RECEIVED: %i <- %i (saved %i bytes %i%%)\n", unp, ret, -saved___, -100*saved___/unp);
@@ -26381,7 +25667,7 @@ bool NET_GetPacket (netsrc_t sock, netadr_t *net_from, sizebuf_t *net_message)
 			}
 			else
 			{
-				Memcpy(net_message->data, compressed_frame, ret);
+				memcpy(net_message->data, compressed_frame, ret);
 				if (net_traffic->value)
 					Com_Printf("RECEIVED: %i\n", ret);
 			}
@@ -26395,17 +25681,11 @@ bool NET_GetPacket (netsrc_t sock, netadr_t *net_from, sizebuf_t *net_message)
 
 	if (ret == -1)
 	{
-#ifdef _WIN32
-		int err = WSAGetLastError();
+		int err = socketError;
 
-		if (err == WSAEWOULDBLOCK || err == WSAECONNRESET)
+		if (err == EWOULDBLOCK || err == ECONNRESET)
 			return false;
-		if (err == WSAEMSGSIZE)
-#else
-		if (errno == EWOULDBLOCK || errno == ECONNRESET)
-			return false;
-		if (errno == EMSGSIZE)
-#endif
+		if (err == EMSGSIZE)
 		{
 			Com_Printf ("^3Warning:^7 Oversize packet from %s\n", NET_AdrToString(*net_from));
 			return false;
@@ -26444,13 +25724,13 @@ void NET_SendPacket (netsrc_t sock, int length, void *data, netadr_t to)
 	if (to.type == NA_BROADCAST)
 	{
 		net_socket = ip_sockets[sock];
-		if (!net_socket)
+		if (net_socket == -1)
 			return;
 	}
 	else if (to.type == NA_IP)
 	{
 		net_socket = ip_sockets[sock];
-		if (!net_socket)
+		if (net_socket == -1)
 			return;
 	}
 	else
@@ -26519,25 +25799,15 @@ void NET_SendPacket (netsrc_t sock, int length, void *data, netadr_t to)
 
 	if (ret == -1)
 	{
-#ifdef _WIN32
-		int err = WSAGetLastError();
+		int err = socketError;
 
 		// wouldblock is silent
-		if (err == WSAEWOULDBLOCK)
+		if (err == EWOULDBLOCK)
 			return;
 
 		// some PPP links dont allow broadcasts
-		if ((err == WSAEADDRNOTAVAIL || err == WSAEHOSTUNREACH || err == WSAENETUNREACH) && ((to.type == NA_BROADCAST)))
+		if ((err == EADDRNOTAVAIL || err == EHOSTUNREACH || err == ENETUNREACH) && ((to.type == NA_BROADCAST)))
 			return;
-#else
-		// wouldblock is silent
-		if (errno == EWOULDBLOCK)
-			return;
-
-		// some PPP links dont allow broadcasts
-		if ((errno == EADDRNOTAVAIL || errno == EHOSTUNREACH || errno == ENETUNREACH) && ((to.type == NA_BROADCAST)))
-			return;
-#endif
 
 		if (dedicated->value)	// let dedicated servers continue after errors
 		{
@@ -26545,11 +25815,7 @@ void NET_SendPacket (netsrc_t sock, int length, void *data, netadr_t to)
 		}
 		else
 		{
-#ifdef _WIN32
-			if (err == WSAEADDRNOTAVAIL)
-#else
-			if (errno == EADDRNOTAVAIL)
-#endif
+			if (err == EADDRNOTAVAIL)
 			{
 				Com_DPrintf ("NET_SendPacket Warning: %s : %s\n", NET_ErrorString(), NET_AdrToString (to));
 			}
@@ -26591,7 +25857,7 @@ void Netchan_Transmit (netchan_t *chan, int length, byte *data)
 
 	if (!chan->reliable_length && chan->message.cursize)
 	{
-		Memcpy (chan->reliable_buf, chan->message_buf, chan->message.cursize);
+		memcpy (chan->reliable_buf, chan->message_buf, chan->message.cursize);
 		chan->reliable_length = chan->message.cursize;
 		chan->message.cursize = 0;
 		chan->reliable_sequence ^= 1;
@@ -26930,7 +26196,7 @@ void R_SpawnDecalBSP (decal_t *decal, image_t *texture, dtype_t type, bool shot,
 
 	dec = free_decals;
 	free_decals = dec->next;
-	Memcpy(dec, decal, sizeof(decal_t));
+	memcpy(dec, decal, sizeof(decal_t));
 	dec->next = active_decals;
 	active_decals = dec;
 
@@ -27184,7 +26450,7 @@ void R_SpawnDecalBModel (decal_t *decal, image_t *texture, dtype_t type, bool sh
 
 	dec = free_decals;
 	free_decals = dec->next;
-	Memcpy(dec, decal, sizeof(decal_t));
+	memcpy(dec, decal, sizeof(decal_t));
 	dec->next = active_decals;
 	active_decals = dec;
 
@@ -27331,7 +26597,7 @@ void R_SpawnDecal(vec3_t center, vec3_t normal, image_t *texture, float minsize,
 ///	dec.type = dtype;
 	dec.angle = RandomMinMax(minangle, maxangle);
 	dec.model_id = 0;
-	Memcpy(dec.decalTextureName, texture->name, MAX_QPATH);
+	memcpy(dec.decalTextureName, texture->name, MAX_QPATH);
 	dec.decalType = dtype;
 	dec.shot = shot;
 	dec.size = dec_radius;
@@ -27721,7 +26987,7 @@ again:
 	{
 er:		if (crash)
 			Com_Error (ERR_DROP, "Mod_ForName: %s not found", mod->name);
-		Memset (mod->name, 0, sizeof(mod->name));
+		memset (mod->name, 0, sizeof(mod->name));
 		return NULL;
 	}
 	if (modfilelen <= 0)
@@ -27903,14 +27169,14 @@ void CL_ClearParticles ()
 
 void CL_ClearDlights ()
 {
-	Memset (cl_dlights, 0, sizeof(cl_dlights));
+	memset (cl_dlights, 0, sizeof(cl_dlights));
 }
 
 
 void CL_ClearLightStyles ()
 {
-	Memset (sv_lightstyle, 0, sizeof(sv_lightstyle));
-	Memset (cl_lightstyle, 0, sizeof(cl_lightstyle));
+	memset (sv_lightstyle, 0, sizeof(sv_lightstyle));
+	memset (cl_lightstyle, 0, sizeof(cl_lightstyle));
 	lastofs = -1;
 }
 
@@ -27929,7 +27195,7 @@ void CL_InitDecals()
 {
 	int i;
 
-	Memset (decals, 0, sizeof(decals));
+	memset (decals, 0, sizeof(decals));
 	free_decals = &decals[0];
 	active_decals = NULL;
 
@@ -27942,12 +27208,12 @@ void CL_InitDecals()
 
 void CL_ClearTEnts ()
 {
-	Memset (cl_beams, 0, sizeof(cl_beams));
-	Memset (cl_explosions, 0, sizeof(cl_explosions));
-	Memset (cl_lasers, 0, sizeof(cl_lasers));
+	memset (cl_beams, 0, sizeof(cl_beams));
+	memset (cl_explosions, 0, sizeof(cl_explosions));
+	memset (cl_lasers, 0, sizeof(cl_lasers));
 //ROGUE
-	Memset (cl_playerbeams, 0, sizeof(cl_playerbeams));
-	Memset (cl_sustains, 0, sizeof(cl_sustains));
+	memset (cl_playerbeams, 0, sizeof(cl_playerbeams));
+	memset (cl_sustains, 0, sizeof(cl_sustains));
 //ROGUE
 }
 
@@ -27958,8 +27224,8 @@ void CL_ClearState ()
 	CL_ClearTEnts ();
 
 // wipe the entire cl structure
-	Memset (&cl, 0, sizeof(cl));
-	Memset (&cl_entities, 0, sizeof(cl_entities));
+	memset (&cl, 0, sizeof(cl));
+	memset (&cl_entities, 0, sizeof(cl_entities));
 
 	SZ_Clear (&cls.netchan.message);
 }
@@ -27999,7 +27265,8 @@ void CL_Disconnect ()
 
 	cl.refdef.blend[0] = cl.refdef.blend[1] = cl.refdef.blend[2] = cl.refdef.blend[3] = 0;
 
-	M_ForceMenuOff();
+	if (cls.key_dest != key_menu)
+		cls.key_dest = key_console;
 
 	cls.connect_time = 0;
 
@@ -28110,7 +27377,7 @@ void SV_Shutdown (char *finalmsg, bool reconnect)
 	// free current level
 	if (sv.demofile)
 		fclose (sv.demofile);
-	Memset (&sv, 0, sizeof(sv));
+	memset (&sv, 0, sizeof(sv));
 	Com_SetServerState (sv.state);
 
 	// free server static data
@@ -28120,7 +27387,7 @@ void SV_Shutdown (char *finalmsg, bool reconnect)
 		Z_Free (svs.client_entities);
 	if (svs.demofile)
 		fclose (svs.demofile);
-	Memset (&svs, 0, sizeof(svs));
+	memset (&svs, 0, sizeof(svs));
 }
 
 
@@ -28202,7 +27469,7 @@ void PlayerConfig_ScanDirectories()
 	if ( !ndirs )
 		return;	/// false;
 	dirnames = (char **) malloc( sizeof( char * ) * ( ndirs + 1 ) );
-	Memset( dirnames, 0, sizeof( char * ) * ( ndirs + 1 ) );
+	memset( dirnames, 0, sizeof( char * ) * ( ndirs + 1 ) );
 
 	j = 0;
 	// copy 1st list
@@ -28299,7 +27566,7 @@ void PlayerConfig_ScanDirectories()
 			continue;
 		}
 		names = (char **) malloc( sizeof( char * ) * ( nfiles + 1 ) );
-		Memset( names, 0, sizeof( char * ) * ( nfiles + 1 ) );
+		memset( names, 0, sizeof( char * ) * ( nfiles + 1 ) );
 
 		j = 0;
 		char *dot;
@@ -28407,7 +27674,7 @@ void PlayerConfig_ScanDirectories()
 		}
 
 		skinnames = (char **) malloc( sizeof( char * ) * ( nskins + 1 ) );
-		Memset( skinnames, 0, sizeof( char * ) * ( nskins + 1 ) );
+		memset( skinnames, 0, sizeof( char * ) * ( nskins + 1 ) );
 
 		// copy the valid skins
 		for ( s = 0, k = 0; k < nfiles; k++ )
@@ -28489,7 +27756,7 @@ void PlayerConfig_ScanDirectories()
 					char	**skinnames;
 					nskins = s_pmi[j].nskins + s_pmi[i].nskins;
 					skinnames = (char **) malloc( sizeof( char * ) * ( nskins + 1 ) );
-					Memset( skinnames, 0, sizeof( char * ) * ( nskins + 1 ) );
+					memset( skinnames, 0, sizeof( char * ) * ( nskins + 1 ) );
 					for (l=0; l<s_pmi[j].nskins; l++)
 						skinnames[l] = s_pmi[j].skindisplaynames[l];
 					for (l=0; l<s_pmi[i].nskins; l++)
@@ -28529,7 +27796,7 @@ void PlayerConfig_ScanDirectories()
 				}
 			if (i == s_numplayermodels)
 				break;
-			Memcpy(free_pmi, pmi, sizeof(s_pmi[0]));
+			memcpy(free_pmi, pmi, sizeof(s_pmi[0]));
 			pmi->nskins = 0;
 		}
 	}
@@ -28551,7 +27818,7 @@ void PlayerConfig_ScanDirectories()
 					free(s_pmi[i].skindisplaynames);
 					// move down all above s_pmi
 					for (j = i; j < s_numplayermodels-1; j++)
-						Memcpy(&s_pmi[j], &s_pmi[j + 1], sizeof(s_pmi[0]));
+						memcpy(&s_pmi[j], &s_pmi[j + 1], sizeof(s_pmi[0]));
 				}
 				s_numplayermodels--;
 			}
@@ -28774,6 +28041,10 @@ void Key_SetBinding (int keynum, char *binding)
 		keybindings[keynum] = NULL;
 	}
 
+	// don't bind to empty string
+	if(!binding[0])
+		return;
+
 // allocate memory for new binding
 	l = strlen (binding);
 	nw = (char*) Z_Malloc (l+1, true);
@@ -28909,6 +28180,9 @@ void Key_Init ()
 	consolekeys[K_KP_PLUS] = true;
 	consolekeys[K_KP_MINUS] = true;
 	consolekeys[K_KP_5] = true;
+
+	consolekeys[K_MWHEELDOWN] = true;
+	consolekeys[K_MWHEELUP] = true;
 
 	consolekeys['`'] = false;
 	consolekeys['~'] = false;
@@ -29221,7 +28495,7 @@ void Cbuf_InsertText (char *text)
 	if (templen)
 	{
 		temp = (char*) Z_Malloc (templen, true);
-		Memcpy (temp, cmd_text.data, templen);
+		memcpy (temp, cmd_text.data, templen);
 		SZ_Clear (&cmd_text);
 	}
 	else
@@ -29241,11 +28515,11 @@ void Cbuf_InsertText (char *text)
 
 static bool Cvar_InfoValidate (char *s)
 {
-	if (strstr (s, "\\"))
+	if (strchr (s, '\\'))
 		return false;
-	if (strstr (s, "\""))
+	if (strchr (s, '\"'))
 		return false;
-	if (strstr (s, ";"))
+	if (strchr (s, ';'))
 		return false;
 	return true;
 }
@@ -29662,7 +28936,7 @@ int Sys_FindFiles (const char *path, const char *pattern, char **fileList, int m
 	bool			findRes = true;
 #else
 	struct dirent	**n_file;
-	long			hFile;
+	int				hFile;
 #endif
 	char			searchPath[MAX_OSPATH];
 	char			findPath[MAX_OSPATH];
@@ -29829,8 +29103,8 @@ void FS_SetGamedir (char *dir)
 {
 	searchpath_t	*next;
 
-	if (strstr(dir, "..") || strstr(dir, "/")
-		|| strstr(dir, "\\") || strstr(dir, ":") )
+	if (strstr(dir, "..") || strchr(dir, '/')
+		|| strchr(dir, '\\') || strchr(dir, ':') )
 	{
 		Com_Printf ("^3Gamedir should be a single filename, not a path\n");
 		return;
@@ -29874,10 +29148,10 @@ void FS_SetGamedir (char *dir)
 }
 
 
-char	findbase[MAX_OSPATH];
-char	findpath[MAX_OSPATH];
+char		findbase[MAX_OSPATH];
+char		findpath[MAX_OSPATH];
 #ifdef _WIN32
-long	findhandle;
+intptr_t	findhandle;
 #else
 char	findpattern[MAX_OSPATH];
 DIR		*fdir;
@@ -30521,6 +29795,7 @@ void Cmd_ForwardToServer ()
 		SZ_Print (&cls.netchan.message, " ");
 		SZ_Print (&cls.netchan.message, Cmd_Args());
 	}
+	cls.forcePacket = true;
 }
 
 
@@ -30616,7 +29891,7 @@ void Cbuf_Execute ()
 				break;
 		}
 
-		Memcpy (line, text, i);
+		memcpy (line, text, i);
 		line[i] = 0;
 
 // delete the text from the command buffer and move remaining commands down
@@ -30761,7 +30036,7 @@ char **FS_ListFiles( char *findname, int *numfiles, unsigned musthave, unsigned 
 	*numfiles = nfiles;
 
 	list = (char**) malloc( sizeof( char * ) * nfiles );
-	Memset( list, 0, sizeof( char * ) * nfiles );
+	memset( list, 0, sizeof( char * ) * nfiles );
 
 	s = Sys_FindFirst( findname, musthave, canthave );
 	nfiles = 0;
@@ -30988,7 +30263,7 @@ void	FS_LoadPureList(char *dir, int idx)
 	}
 
 	paknames_[idx] = (char **) Z_Malloc( sizeof( char * ) * ( numpaks_[idx] + 1 ), true );
-///	Memset( paknames_[idx], 0, sizeof( char * ) * ( numpaks_[idx] + 1 ) );
+///	memset( paknames_[idx], 0, sizeof( char * ) * ( numpaks_[idx] + 1 ) );
 
 	s = buffer;
 
@@ -31031,7 +30306,7 @@ void	FS_LoadPureLists()
 	// Объединим списки
 	int i, j;
 	paknames = (char **) Z_Malloc( sizeof( char * ) * ( numpaks_[0] + numpaks_[1] + 1 ), true );
-///	Memset( paknames, 0, sizeof( char * ) * ( numpaks_[0] + numpaks_[1] + 1 ) );
+///	memset( paknames, 0, sizeof( char * ) * ( numpaks_[0] + numpaks_[1] + 1 ) );
 	for (j=0; j<2; j++)
 		for ( i = 0; i < numpaks_[j]; i++ )
 		{
@@ -31089,7 +30364,7 @@ void	FS_CutNonPures()
 void FS_ResetFilesystem_f ()
 {
 	fs_cache_number = 0;
-	Memset(fs_cache, 0, sizeof(fs_cache));
+	memset(fs_cache, 0, sizeof(fs_cache));
 }
 
 void FS_InitFilesystem ()
@@ -31198,31 +30473,9 @@ next:	Cbuf_AddText (va("set %s %s\n", COM_Argv(i+1), COM_Argv(i+2)));
 }
 
 
-/*
-=============
-Com_Quit
-
-Both client and server can use this, and it will
-do the apropriate things.
-=============
-*/
-void Com_Quit ()
-{
-	SV_Shutdown ("Server quit\n", false);
-	CL_Shutdown ();
-
-	if (logfile)
-	{
-		fclose (logfile);
-		logfile = NULL;
-	}
-
-	Sys_Quit ();
-}
-
-
 int		ccom_argc;
 char	**ccom_argv;
+
 
 /*
 ================
@@ -31275,284 +30528,6 @@ void Q_strncatz (char *dst, const char *src, int dstSize)
 
 		*dst = 0;
 	}
-}
-
-
-/*
-=================
-Sys_DetectCPU
-=================
-*/
-bool Sys_DetectCPU(char *cpuString, int maxSize)
-{
-#ifdef ENABLE_ASM
-#ifdef _MSC_VER
-
-	char				vendor[16];
-	int					stdBits, features, extFeatures;
-	int					family, model;
-	unsigned __int64	start, end, counter, stop, frequency;
-	unsigned			speed;
-	bool				hasMMX, hasMMXExt, has3DNow, has3DNowExt, hasSSE, hasSSE2;
-
-	// Check if CPUID instruction is supported
-	__try
-	{
-		__asm
-		{
-			xor eax, eax
-			cpuid
-		}
-	}
-	__except (EXCEPTION_EXECUTE_HANDLER)
-	{
-		return false;
-	}
-
-	// Get CPU info
-	__asm
-	{
-		; // Get vendor identifier
-		sub eax, eax
-			cpuid
-			mov dword ptr[vendor + 0], ebx
-			mov dword ptr[vendor + 4], edx
-			mov dword ptr[vendor + 8], ecx
-			mov dword ptr[vendor + 12], 0
-
-			; // Get standard bits and features
-		mov eax, 1
-			cpuid
-			mov stdBits, eax
-			mov features, edx
-
-			; // Check if extended functions are present
-		mov extFeatures, 0
-			mov eax, 80000000h
-			cpuid
-			cmp eax, 80000000h
-			jbe NoExtFunction
-
-			; // Get extended features
-		mov eax, 80000001h
-			cpuid
-			mov extFeatures, edx
-
-			NoExtFunction :
-	}
-
-	// Get CPU name
-	family = (stdBits >> 8) & 15;
-	model = (stdBits >> 4) & 15;
-
-	if (!Q_strcasecmp(vendor, "AuthenticAMD"))
-	{
-		Q_strncpyz(cpuString, "AMD", maxSize);
-
-		switch (family)
-		{
-		case 5:
-			switch (model)
-			{
-			case 0:
-			case 1:
-			case 2:
-			case 3:
-				Q_strncatz(cpuString, " K5", maxSize);
-				break;
-			case 6:
-			case 7:
-				Q_strncatz(cpuString, " K6", maxSize);
-				break;
-			case 8:
-				Q_strncatz(cpuString, " K6-2", maxSize);
-				break;
-			case 9:
-			case 10:
-			case 11:
-			case 12:
-			case 13:
-			case 14:
-			case 15:
-				Q_strncatz(cpuString, " K6-III", maxSize);
-				break;
-			}
-			break;
-		case 6:
-			switch (model)
-			{
-			case 1:
-				Q_strncatz(cpuString, " Athlon (0.25 core)", maxSize);
-				break;
-			case 2:
-				Q_strncatz(cpuString, " Athlon (0.18 core)", maxSize);
-				break;
-			case 3:
-				Q_strncatz(cpuString, " Duron Spitfire", maxSize);
-				break;
-			case 4:
-				Q_strncatz(cpuString, " Athlon Thunderbird", maxSize);
-				break;
-			case 6:
-				Q_strncatz(cpuString, " Athlon Palomino", maxSize);
-				break;
-			case 7:
-				Q_strncatz(cpuString, " Duron Morgan", maxSize);
-				break;
-			case 8:
-				Q_strncatz(cpuString, " Athlon Thoroughbred", maxSize);
-				break;
-			case 10:
-				Q_strncatz(cpuString, " Athlon Barton", maxSize);
-				break;
-			}
-			break;
-		}
-	}
-	else if (!Q_strcasecmp(vendor, "GenuineIntel"))
-	{
-		Q_strncpyz(cpuString, "Intel", maxSize);
-
-		switch (family)
-		{
-		case 5:
-			switch (model)
-			{
-			case 0:
-			case 1:
-			case 2:
-			case 3:
-			case 4:
-			case 7:
-			case 8:
-				Q_strncatz(cpuString, " Pentium", maxSize);
-				break;
-			}
-			break;
-		case 6:
-			switch (model)
-			{
-			case 0:
-			case 1:
-				Q_strncatz(cpuString, " Pentium Pro", maxSize);
-				break;
-			case 3:
-			case 5:		// Actual differentiation depends on cache settings
-				Q_strncatz(cpuString, " Pentium II", maxSize);
-				break;
-			case 6:
-				Q_strncatz(cpuString, " Celeron", maxSize);
-				break;
-			case 7:
-			case 8:
-			case 9:
-			case 10:
-			case 11:	// Actual differentiation depends on cache settings
-				Q_strncatz(cpuString, " Pentium III", maxSize);
-				break;
-			}
-			break;
-		case 15:
-			Q_strncatz(cpuString, " Pentium 4", maxSize);
-			break;
-		}
-	}
-	else
-		return false;
-
-	// Check if RDTSC instruction is supported
-	if ((features >> 4) & 1)
-	{
-		// Measure CPU speed
-		QueryPerformanceFrequency((LARGE_INTEGER *)&frequency);
-
-		__asm {
-			rdtsc
-			mov dword ptr[start + 0], eax
-			mov dword ptr[start + 4], edx
-		}
-
-		QueryPerformanceCounter((LARGE_INTEGER *)&stop);
-		stop += frequency;
-
-		do
-		{
-			QueryPerformanceCounter((LARGE_INTEGER *)&counter);
-		} while (counter < stop);
-
-		__asm
-		{
-			rdtsc
-			mov dword ptr[end + 0], eax
-			mov dword ptr[end + 4], edx
-		}
-
-		speed = (unsigned)((end - start) / 1000000);
-
-		Q_strncatz(cpuString, va(" %u MHz", speed), maxSize);
-	}
-
-	// Get extended instruction sets supported
-	hasMMX = (features >> 23) & 1;
-	hasMMXExt = (extFeatures >> 22) & 1;
-	has3DNow = (extFeatures >> 31) & 1;
-	has3DNowExt = (extFeatures >> 30) & 1;
-	hasSSE = (features >> 25) & 1;
-	hasSSE2 = (features >> 26) & 1;
-
-	cpu_mmx = cpu_mmxe = cpu_3dnow = cpu_3dnowe = cpu_sse = cpu_sse2 = false;
-
-	if (hasMMX || has3DNow || hasSSE)
-	{
-		Q_strncatz(cpuString, " w/", maxSize);
-
-		if (hasMMX)
-		{
-			Q_strncatz(cpuString, " MMX", maxSize);
-			cpu_mmx = true;
-			if (hasMMXExt)
-			{
-				Q_strncatz(cpuString, "+", maxSize);
-				cpu_mmxe = true;
-			}
-		}
-		if (has3DNow)
-		{
-			Q_strncatz(cpuString, " 3DNow!", maxSize);
-			cpu_3dnow = true;
-			if (has3DNowExt)
-			{
-				Q_strncatz(cpuString, "+", maxSize);
-				cpu_3dnowe = true;
-			}
-		}
-		if (hasSSE)
-		{
-			Q_strncatz(cpuString, " SSE", maxSize);
-			cpu_sse = true;
-			if (hasSSE2)
-			{
-				Q_strncatz(cpuString, "2", maxSize);
-				cpu_sse2 = true;
-			}
-		}
-	}
-
-	return true;
-
-#endif
-#else
-
-	cpu_mmx  = SDL_HasMMX();
-	cpu_3dnow = SDL_Has3DNow();
-	cpu_sse = SDL_HasSSE();
-	cpu_sse2 = SDL_HasSSE2();
-
-	Q_strncpyz(cpuString, "Generic", maxSize);
-
-	return true;
-
-#endif
 }
 
 
@@ -31651,27 +30626,11 @@ char *Sys_GetCurrentUser ()
 
 void Sys_Init ()
 {
-	char str[64];
-
 	if (SDL_InitSubSystem(SDL_INIT_TIMER) < 0)
-		Sys_Error("SDL_InitSubSystem(SDL_INIT_TIMER) ^1failed^7: %s\n", SDL_GetError());
+		Sys_Error("SDL_InitSubSystem(SDL_INIT_TIMER) failed: %s\n", SDL_GetError());
 
-	Com_Printf("*** Berserker@Quake2 ***\nBuilt: %s %s\nBinary code: x86 (%s)\n\n", __DATE__, __TIME__, BUILDSTRING);
-
-	NumberOfProcessors = SDL_GetCPUCount();
-
-	// Get RAM
-	Com_Printf("\nTotal physical RAM: %d MB\n", SDL_GetSystemRAM());
-
-	// Detect CPU
-	Com_Printf("CPU: ");
-	if (Sys_DetectCPU(str, sizeof(str)))
-		sys_cpu = Cvar_Get("sys_cpu", str, CVAR_NOSET);
-	else
-		sys_cpu = Cvar_Get("sys_cpu", "Unknown", CVAR_NOSET);
-	Com_Printf("%s\n", sys_cpu->string);
-	if (NumberOfProcessors>1)
-		Com_Printf("Found %i CPUs\n\n", NumberOfProcessors);
+	// This doesn't display, console buffer too small?
+	Com_Printf("*** Berserker@Quake2 ***\nBuilt: %s %s\nBinary code: %s (%s)\n\n", __DATE__, __TIME__, BERS_ARCH_STR, BUILDSTRING);
 
 	// Get user name
 	sys_username = Cvar_Get("sys_username", Sys_GetCurrentUser(), CVAR_NOSET);
@@ -31712,6 +30671,111 @@ void NET_Init ()
 }
 
 
+/*
+====================
+NET_OpenIP
+====================
+*/
+void NET_OpenIP ()
+{
+	cvar_t	*ip;
+	int		port;
+	int		dedicated;
+
+	ip = Cvar_Get ("ip", "localhost", CVAR_NOSET);
+
+	dedicated = Cvar_VariableValue ("dedicated");
+
+	if (ip_sockets[NS_SERVER] == -1)
+	{
+		port = Cvar_Get("ip_hostport", "0", CVAR_NOSET)->value;
+		if (!port)
+		{
+			port = Cvar_Get("hostport", "0", CVAR_NOSET)->value;
+			if (!port)
+			{
+				if(net_compatibility->value)
+					port = Cvar_Get("port", va("%i", OLD_PORT_SERVER), CVAR_NOSET)->value;
+				else
+					port = Cvar_Get("port", va("%i", PORT_SERVER), CVAR_NOSET)->value;
+			}
+		}
+		ip_sockets[NS_SERVER] = NET_IPSocket (ip->string, port);
+		if (ip_sockets[NS_SERVER] == -1 && dedicated)
+			Com_Error (ERR_FATAL, "Couldn't allocate dedicated server IP port");
+	}
+
+
+	// dedicated servers don't need client ports
+	if (dedicated)
+		return;
+
+	if (ip_sockets[NS_CLIENT] == -1)
+	{
+		port = Cvar_Get("ip_clientport", "0", CVAR_NOSET)->value;
+		if (!port)
+		{
+			if(net_compatibility->value)
+				port = Cvar_Get("clientport", va("%i", OLD_PORT_CLIENT), CVAR_NOSET)->value;
+			else
+				port = Cvar_Get("clientport", va("%i", PORT_CLIENT), CVAR_NOSET)->value;
+
+			if (!port)
+				port = PORT_ANY;
+		}
+		ip_sockets[NS_CLIENT] = NET_IPSocket (ip->string, port);
+		if (ip_sockets[NS_CLIENT] == -1)
+			ip_sockets[NS_CLIENT] = NET_IPSocket (ip->string, PORT_ANY);
+	}
+}
+
+
+/*
+====================
+NET_Config
+
+A single player game will only use the loopback code
+====================
+*/
+void	NET_Config (bool multiplayer)
+{
+	int		i;
+	static	bool	old_config;
+
+	if (old_config == multiplayer)
+		return;
+
+	old_config = multiplayer;
+
+	if (!multiplayer)
+	{	// shut down any existing sockets
+		for (i=0 ; i<2 ; i++)
+		{
+			if (ip_sockets[i] >= 0)
+			{
+				close (ip_sockets[i]);
+				ip_sockets[i] = -1;
+			}
+		}
+	}
+	else
+	{	// open sockets
+		if (!noudp->value)
+			NET_OpenIP ();
+	}
+}
+
+
+void NET_Shutdown ()
+{
+	// close sockets
+	NET_Config (false);
+#ifdef _WIN32
+	WSACleanup ();
+#endif
+}
+
+
 void Netchan_Init ()
 {
 	int		port;
@@ -31719,6 +30783,31 @@ void Netchan_Init ()
 	// pick a port value that should be nice and random
 	port = (SHORT)rand();
 	qport = Cvar_Get ("qport", va("%i", port), CVAR_NOSET);
+}
+
+
+/*
+=============
+Com_Quit
+
+Both client and server can use this, and it will
+do the apropriate things.
+=============
+*/
+void Com_Quit()
+{
+	CL_Disconnect();
+	SV_Shutdown("Server quit\n", false);
+	CL_Shutdown();
+
+	if (logfile)
+	{
+		fclose(logfile);
+		logfile = NULL;
+	}
+
+	NET_Shutdown();
+	Sys_Quit();
 }
 
 
@@ -31949,7 +31038,7 @@ void Info_Print (char *s)
 		l = o - key;
 		if (l < 20)
 		{
-			Memset (o, ' ', 20-l);
+			memset (o, ' ', 20-l);
 			key[20] = 0;
 		}
 		else
@@ -31982,7 +31071,7 @@ void Info_RemoveKey (char *s, char *key)
 	char	value[MAX_INFO_STRING];
 	char	*o;
 
-	if (strstr (key, "\\"))
+	if (strchr (key, '\\'))
 		return;
 
 	while (1)
@@ -32028,19 +31117,19 @@ void Info_SetValueForKey (char *s, char *key, char *value)
 	int		c;
 	int		maxsize = MAX_INFO_STRING;
 
-	if (strstr (key, "\\") || strstr (value, "\\") )
+	if (strchr (key, '\\') )
 	{
 		Com_Printf ("^1Can't use keys or values with a \\\n");
 		return;
 	}
 
-	if (strstr (key, ";") )
+	if (strchr (key, ';') )
 	{
 		Com_Printf ("^1Can't use keys or values with a semicolon\n");
 		return;
 	}
 
-	if (strstr (key, "\"") || strstr (value, "\"") )
+	if (strchr (key, '\"') )
 	{
 		Com_Printf ("^1Can't use keys or values with a \"\n");
 		return;
@@ -32248,38 +31337,30 @@ int NET_IPSocket (char *net_interface, int port)
 	struct sockaddr_in	address;
 	unsigned long		_true = 1;
 	int					i = 1;
-#ifdef _WIN32
 	int					err;
-#endif
 
 	if ((newsocket = socket (PF_INET, SOCK_DGRAM, IPPROTO_UDP)) == -1)
 	{
-#ifdef _WIN32
-		err = WSAGetLastError();
-		if (err != WSAEAFNOSUPPORT)
-#else
-		if (errno != EAFNOSUPPORT)
-#endif
+		err = socketError;
+		if (err != EAFNOSUPPORT)
 			Com_DPrintf ("WARNING: UDP_OpenSocket: socket: %s\n", NET_ErrorString());
-		return 0;
+		return -1;
 	}
 
 	// make it non-blocking
-#ifdef _WIN32
-	if (ioctlsocket (newsocket, FIONBIO, &_true) == -1)
-#else
 	if (ioctl (newsocket, FIONBIO, &_true) == -1)
-#endif
 	{
 		Com_DPrintf ("WARNING: UDP_OpenSocket: ioctl FIONBIO: %s\n", NET_ErrorString());
-		return 0;
+		close (newsocket);
+		return -1;
 	}
 
 	// make it broadcast capable
 	if (setsockopt(newsocket, SOL_SOCKET, SO_BROADCAST, (char *)&i, sizeof(i)) == -1)
 	{
 		Com_DPrintf ("WARNING: UDP_OpenSocket: setsockopt SO_BROADCAST: %s\n", NET_ErrorString());
-		return 0;
+		close (newsocket);
+		return -1;
 	}
 
 	if (!net_interface || !net_interface[0] || !stricmp(net_interface, "localhost"))
@@ -32297,114 +31378,11 @@ int NET_IPSocket (char *net_interface, int port)
 	if( bind (newsocket, (struct sockaddr *)&address, sizeof(address)) == -1)
 	{
 		Com_DPrintf ("WARNING: UDP_OpenSocket: bind: %s\n", NET_ErrorString());
-#ifdef _WIN32
-		closesocket (newsocket);
-#else
 		close (newsocket);
-#endif
-		return 0;
+		return -1;
 	}
 
 	return newsocket;
-}
-
-
-/*
-====================
-NET_OpenIP
-====================
-*/
-void NET_OpenIP ()
-{
-	cvar_t	*ip;
-	int		port;
-	int		dedicated;
-
-	ip = Cvar_Get ("ip", "localhost", CVAR_NOSET);
-
-	dedicated = Cvar_VariableValue ("dedicated");
-
-	if (!ip_sockets[NS_SERVER])
-	{
-		port = Cvar_Get("ip_hostport", "0", CVAR_NOSET)->value;
-		if (!port)
-		{
-			port = Cvar_Get("hostport", "0", CVAR_NOSET)->value;
-			if (!port)
-			{
-				if(net_compatibility->value)
-					port = Cvar_Get("port", va("%i", OLD_PORT_SERVER), CVAR_NOSET)->value;
-				else
-					port = Cvar_Get("port", va("%i", PORT_SERVER), CVAR_NOSET)->value;
-			}
-		}
-		ip_sockets[NS_SERVER] = NET_IPSocket (ip->string, port);
-		if (!ip_sockets[NS_SERVER] && dedicated)
-			Com_Error (ERR_FATAL, "Couldn't allocate dedicated server IP port");
-	}
-
-
-	// dedicated servers don't need client ports
-	if (dedicated)
-		return;
-
-	if (!ip_sockets[NS_CLIENT])
-	{
-		port = Cvar_Get("ip_clientport", "0", CVAR_NOSET)->value;
-		if (!port)
-		{
-			if(net_compatibility->value)
-				port = Cvar_Get("clientport", va("%i", OLD_PORT_CLIENT), CVAR_NOSET)->value;
-			else
-				port = Cvar_Get("clientport", va("%i", PORT_CLIENT), CVAR_NOSET)->value;
-
-			if (!port)
-				port = PORT_ANY;
-		}
-		ip_sockets[NS_CLIENT] = NET_IPSocket (ip->string, port);
-		if (!ip_sockets[NS_CLIENT])
-			ip_sockets[NS_CLIENT] = NET_IPSocket (ip->string, PORT_ANY);
-	}
-}
-
-
-/*
-====================
-NET_Config
-
-A single player game will only use the loopback code
-====================
-*/
-void	NET_Config (bool multiplayer)
-{
-	int		i;
-	static	bool	old_config;
-
-	if (old_config == multiplayer)
-		return;
-
-	old_config = multiplayer;
-
-	if (!multiplayer)
-	{	// shut down any existing sockets
-		for (i=0 ; i<2 ; i++)
-		{
-			if (ip_sockets[i])
-			{
-#ifdef _WIN32
-				closesocket (ip_sockets[i]);
-#else
-				close (ip_sockets[i]);
-#endif
-				ip_sockets[i] = 0;
-			}
-		}
-	}
-	else
-	{	// open sockets
-		if (! noudp->value)
-			NET_OpenIP ();
-	}
 }
 
 
@@ -32421,8 +31399,8 @@ int Create_Mapsstrings (int mask)
 	bool			exit = false;
 
 	// init
-	Memset(m_maps, 0, sizeof(char)*MAX_MAPS*(MAX_MAP_NAMELEN+1));
-	Memset(m_mapsvalid, 0, sizeof(bool)*MAX_MAPS);
+	memset(m_maps, 0, sizeof(char)*MAX_MAPS*(MAX_MAP_NAMELEN+1));
+	memset(m_mapsvalid, 0, sizeof(bool)*MAX_MAPS);
 
 	str_map = ".bsp";
 	str_map_ = "*.bsp";
@@ -32448,7 +31426,7 @@ int Create_Mapsstrings (int mask)
 							{
 								if(!b_stricmp(ZipCache[i].pak_name, pak->filename))
 								{
-									Memcpy(&pf, &ZipCache[i], sizeof(zipfile_t));		// Нашли уже открытый ZIP и загрузили его описатель в pf
+									memcpy(&pf, &ZipCache[i], sizeof(zipfile_t));		// Нашли уже открытый ZIP и загрузили его описатель в pf
 									goto clc;
 								}
 							}
@@ -32465,7 +31443,7 @@ int Create_Mapsstrings (int mask)
 					strcpy(&ZipCache[slot].pak_name[0], pak->filename);	// Если не нашли zip в кэше, откроем его...
 					if (!PackFileOpen (&ZipCache[slot]))
 						Com_Error(ERR_FATAL, "Error opening pk2-file: %s", pak->filename);
-					Memcpy(&pf, &ZipCache[slot], sizeof(zipfile_t));
+					memcpy(&pf, &ZipCache[slot], sizeof(zipfile_t));
 					goto clc2;
 clc:				slot = i;
 clc2:				for(i=0; i<pf.gi.number_entry; i++)
@@ -32473,7 +31451,7 @@ clc2:				for(i=0; i<pf.gi.number_entry; i++)
 						if(pf.fi[i].size)
 						{
 							char	nam[256];
-							Memcpy(nam, pf.fi[i].name, 256);
+							memcpy(nam, pf.fi[i].name, 256);
 							if(!Q_strncasecmp(nam, "maps/", 5))
 							{
 								if(!Q_strcasecmp(nam+strlen(nam)-4, str_map))
@@ -32495,7 +31473,7 @@ clc2:				for(i=0; i<pf.gi.number_entry; i++)
 					for (i=0 ; i<pak->numfiles ; i++)
 					{
 						char	nam[256];
-						Memcpy(nam, pak->files[i].name, 256);
+						memcpy(nam, pak->files[i].name, 256);
 						if (!Q_strncasecmp(nam, "maps/", 5))
 						{
 							if(!Q_strcasecmp(nam+strlen(nam)-4, str_map))
@@ -32981,7 +31959,7 @@ void CL_ReadClientFile (bool temp)
 	// load decals
 	while (1)
 	{
-		Memset(&dec, 0, sizeof(dec));
+		memset(&dec, 0, sizeof(dec));
 		FS_Read (&dec.size, sizeof(dec.size), f);
 		if (dec.size == 0x7F7F7F7F)
 			break;
@@ -33017,7 +31995,7 @@ void CL_ReadClientFile (bool temp)
 	// load particles
 	while (1)
 	{
-		Memset(&p, 0, sizeof(p));
+		memset(&p, 0, sizeof(p));
 		FS_Read (&p.size, sizeof(p.size), f);
 		if (p.size == 0x7F7F7F7F)
 			break;
@@ -33071,9 +32049,9 @@ void CL_ReadClientFile (bool temp)
 	// load client entities
 	while (1)
 	{
-		Memset(&cent, 0, sizeof(cent));
-		Memset(name, 0, sizeof(cent.model->name)+1);
-		Memset(skinname, 0, sizeof(cent.skin->name)+1);
+		memset(&cent, 0, sizeof(cent));
+		memset(name, 0, sizeof(cent.model->name)+1);
+		memset(skinname, 0, sizeof(cent.skin->name)+1);
 		FS_Read (name, 4, f);
 		if (name[0] == 0x7F && name[1] == 0x7F && name[2] == 0x7F && name[3] == 0x7F)
 			break;
@@ -33172,7 +32150,7 @@ void SV_WriteServerFile (bool autosave)
 		return;
 	}
 	// write the comment field
-	Memset (comment, 0, sizeof(comment));
+	memset (comment, 0, sizeof(comment));
 
 	if (!autosave)
 	{
@@ -33215,19 +32193,20 @@ void SV_WriteServerFile (bool autosave)
 	// these will be things like coop, skill, deathmatch, etc
 	for (var = cvar_vars ; var ; var=var->next)
 	{
+		char cvarname[128];
 		if (!(var->flags & CVAR_LATCH))
 			continue;
-		if (strlen(var->name) >= sizeof(name)-1
+		if (strlen(var->name) >= sizeof(cvarname)-1
 			|| strlen(var->string) >= sizeof(string)-1)
 		{
 			Com_Printf ("^1Cvar too long: %s = %s\n", var->name, var->string);
 			continue;
 		}
-		Memset (name, 0, sizeof(name));
-		Memset (string, 0, sizeof(string));
-		strcpy (name, var->name);
+		memset (cvarname, 0, sizeof(cvarname));
+		memset (string, 0, sizeof(string));
+		strcpy (cvarname, var->name);
 		strcpy (string, var->string);
-		fwrite (name, 1, sizeof(name), f);
+		fwrite (cvarname, 1, sizeof(cvarname), f);
 		fwrite (string, 1, sizeof(string), f);
 	}
 
@@ -33548,7 +32527,7 @@ byte	phsrow[MAX_MAP_LEAFS/8];
 byte	*CM_ClusterPVS (int cluster)
 {
 	if (cluster == -1)
-		Memset (pvsrow, 0, (numclusters+7)>>3);
+		memset (pvsrow, 0, (numclusters+7)>>3);
 	else
 		CM_DecompressVis (map_visibility + map_vis->bitofs[cluster][DVIS_PVS], pvsrow);
 	return pvsrow;
@@ -33557,7 +32536,7 @@ byte	*CM_ClusterPVS (int cluster)
 byte	*CM_ClusterPHS (int cluster)
 {
 	if (cluster == -1)
-		Memset (phsrow, 0, (numclusters+7)>>3);
+		memset (phsrow, 0, (numclusters+7)>>3);
 	else
 		CM_DecompressVis (map_visibility + map_vis->bitofs[cluster][DVIS_PHS], phsrow);
 	return phsrow;
@@ -35969,9 +34948,9 @@ step1:			if (!(trace.surface->flags & SURF_NODRAW))
 			goto defgibs;
 		if (!ci->model)
 			goto defgibs;
-		slash = strstr(ci->model->name, "\\");
+		slash = strchr(ci->model->name, '\\');
 		if (!slash)
-			slash = strstr(ci->model->name, "/");
+			slash = strchr(ci->model->name, '/');
 		if (slash)
 		{
 			if (!Q_strncasecmp(slash+1, "male", 4))
@@ -37741,242 +36720,6 @@ BoxOnPlaneSide
 Returns 1, 2, or 1 + 2
 ==================
 */
-#ifdef ENABLE_ASM
-#ifdef _MSC_VER
-#pragma warning( disable: 4035 )
-
-NAKED int BoxOnPlaneSide (vec3_t emins, vec3_t emaxs, struct cplane_s *p)
-{
-	static int bops_initialized;
-	static int Ljmptab[8];
-
-	__asm {
-
-		push ebx
-
-		cmp bops_initialized, 1
-		je  initialized
-		mov bops_initialized, 1
-
-		mov Ljmptab[0*4], offset Lcase0
-		mov Ljmptab[1*4], offset Lcase1
-		mov Ljmptab[2*4], offset Lcase2
-		mov Ljmptab[3*4], offset Lcase3
-		mov Ljmptab[4*4], offset Lcase4
-		mov Ljmptab[5*4], offset Lcase5
-		mov Ljmptab[6*4], offset Lcase6
-		mov Ljmptab[7*4], offset Lcase7
-
-initialized:
-
-		mov edx,ds:dword ptr[4+12+esp]
-		mov ecx,ds:dword ptr[4+4+esp]
-		xor eax,eax
-		mov ebx,ds:dword ptr[4+8+esp]
-		mov al,ds:byte ptr[17+edx]
-		cmp al,8
-		jge Lerror
-		fld ds:dword ptr[0+edx]
-		fld st(0)
-		jmp dword ptr[Ljmptab+eax*4]
-Lcase0:
-		fmul ds:dword ptr[ebx]
-		fld ds:dword ptr[0+4+edx]
-		fxch st(2)
-		fmul ds:dword ptr[ecx]
-		fxch st(2)
-		fld st(0)
-		fmul ds:dword ptr[4+ebx]
-		fld ds:dword ptr[0+8+edx]
-		fxch st(2)
-		fmul ds:dword ptr[4+ecx]
-		fxch st(2)
-		fld st(0)
-		fmul ds:dword ptr[8+ebx]
-		fxch st(5)
-		faddp st(3),st(0)
-		fmul ds:dword ptr[8+ecx]
-		fxch st(1)
-		faddp st(3),st(0)
-		fxch st(3)
-		faddp st(2),st(0)
-		jmp LSetSides
-Lcase1:
-		fmul ds:dword ptr[ecx]
-		fld ds:dword ptr[0+4+edx]
-		fxch st(2)
-		fmul ds:dword ptr[ebx]
-		fxch st(2)
-		fld st(0)
-		fmul ds:dword ptr[4+ebx]
-		fld ds:dword ptr[0+8+edx]
-		fxch st(2)
-		fmul ds:dword ptr[4+ecx]
-		fxch st(2)
-		fld st(0)
-		fmul ds:dword ptr[8+ebx]
-		fxch st(5)
-		faddp st(3),st(0)
-		fmul ds:dword ptr[8+ecx]
-		fxch st(1)
-		faddp st(3),st(0)
-		fxch st(3)
-		faddp st(2),st(0)
-		jmp LSetSides
-Lcase2:
-		fmul ds:dword ptr[ebx]
-		fld ds:dword ptr[0+4+edx]
-		fxch st(2)
-		fmul ds:dword ptr[ecx]
-		fxch st(2)
-		fld st(0)
-		fmul ds:dword ptr[4+ecx]
-		fld ds:dword ptr[0+8+edx]
-		fxch st(2)
-		fmul ds:dword ptr[4+ebx]
-		fxch st(2)
-		fld st(0)
-		fmul ds:dword ptr[8+ebx]
-		fxch st(5)
-		faddp st(3),st(0)
-		fmul ds:dword ptr[8+ecx]
-		fxch st(1)
-		faddp st(3),st(0)
-		fxch st(3)
-		faddp st(2),st(0)
-		jmp LSetSides
-Lcase3:
-		fmul ds:dword ptr[ecx]
-		fld ds:dword ptr[0+4+edx]
-		fxch st(2)
-		fmul ds:dword ptr[ebx]
-		fxch st(2)
-		fld st(0)
-		fmul ds:dword ptr[4+ecx]
-		fld ds:dword ptr[0+8+edx]
-		fxch st(2)
-		fmul ds:dword ptr[4+ebx]
-		fxch st(2)
-		fld st(0)
-		fmul ds:dword ptr[8+ebx]
-		fxch st(5)
-		faddp st(3),st(0)
-		fmul ds:dword ptr[8+ecx]
-		fxch st(1)
-		faddp st(3),st(0)
-		fxch st(3)
-		faddp st(2),st(0)
-		jmp LSetSides
-Lcase4:
-		fmul ds:dword ptr[ebx]
-		fld ds:dword ptr[0+4+edx]
-		fxch st(2)
-		fmul ds:dword ptr[ecx]
-		fxch st(2)
-		fld st(0)
-		fmul ds:dword ptr[4+ebx]
-		fld ds:dword ptr[0+8+edx]
-		fxch st(2)
-		fmul ds:dword ptr[4+ecx]
-		fxch st(2)
-		fld st(0)
-		fmul ds:dword ptr[8+ecx]
-		fxch st(5)
-		faddp st(3),st(0)
-		fmul ds:dword ptr[8+ebx]
-		fxch st(1)
-		faddp st(3),st(0)
-		fxch st(3)
-		faddp st(2),st(0)
-		jmp LSetSides
-Lcase5:
-		fmul ds:dword ptr[ecx]
-		fld ds:dword ptr[0+4+edx]
-		fxch st(2)
-		fmul ds:dword ptr[ebx]
-		fxch st(2)
-		fld st(0)
-		fmul ds:dword ptr[4+ebx]
-		fld ds:dword ptr[0+8+edx]
-		fxch st(2)
-		fmul ds:dword ptr[4+ecx]
-		fxch st(2)
-		fld st(0)
-		fmul ds:dword ptr[8+ecx]
-		fxch st(5)
-		faddp st(3),st(0)
-		fmul ds:dword ptr[8+ebx]
-		fxch st(1)
-		faddp st(3),st(0)
-		fxch st(3)
-		faddp st(2),st(0)
-		jmp LSetSides
-Lcase6:
-		fmul ds:dword ptr[ebx]
-		fld ds:dword ptr[0+4+edx]
-		fxch st(2)
-		fmul ds:dword ptr[ecx]
-		fxch st(2)
-		fld st(0)
-		fmul ds:dword ptr[4+ecx]
-		fld ds:dword ptr[0+8+edx]
-		fxch st(2)
-		fmul ds:dword ptr[4+ebx]
-		fxch st(2)
-		fld st(0)
-		fmul ds:dword ptr[8+ecx]
-		fxch st(5)
-		faddp st(3),st(0)
-		fmul ds:dword ptr[8+ebx]
-		fxch st(1)
-		faddp st(3),st(0)
-		fxch st(3)
-		faddp st(2),st(0)
-		jmp LSetSides
-Lcase7:
-		fmul ds:dword ptr[ecx]
-		fld ds:dword ptr[0+4+edx]
-		fxch st(2)
-		fmul ds:dword ptr[ebx]
-		fxch st(2)
-		fld st(0)
-		fmul ds:dword ptr[4+ecx]
-		fld ds:dword ptr[0+8+edx]
-		fxch st(2)
-		fmul ds:dword ptr[4+ebx]
-		fxch st(2)
-		fld st(0)
-		fmul ds:dword ptr[8+ecx]
-		fxch st(5)
-		faddp st(3),st(0)
-		fmul ds:dword ptr[8+ebx]
-		fxch st(1)
-		faddp st(3),st(0)
-		fxch st(3)
-		faddp st(2),st(0)
-LSetSides:
-		faddp st(2),st(0)
-		fcomp ds:dword ptr[12+edx]
-		xor ecx,ecx
-		fnstsw ax
-		fcomp ds:dword ptr[12+edx]
-		and ah,1
-		xor ah,1
-		add cl,ah
-		fnstsw ax
-		and ah,1
-		add ah,ah
-		add cl,ah
-		pop ebx
-		mov eax,ecx
-		ret
-Lerror:
-		int 3
-	}
-}
-#pragma warning( default: 4035 )
-#endif
-#else
 int BoxOnPlaneSide(vec3_t emins, vec3_t emaxs, struct cplane_s *p)
 {
 	float	dist[2];
@@ -38012,7 +36755,6 @@ int BoxOnPlaneSide(vec3_t emins, vec3_t emaxs, struct cplane_s *p)
 
 	return sides;
 }
-#endif
 
 
 /*
@@ -38668,7 +37410,7 @@ trace_t		CM_BoxTrace (vec3_t start, vec3_t end, vec3_t mins, vec3_t maxs, int he
 ///	c_traces++;			// for statistics, may be zeroed
 
 	// fill in a default trace
-	Memset (&trace_trace, 0, sizeof(trace_trace));
+	memset (&trace_trace, 0, sizeof(trace_trace));
 	trace_trace.fraction = 1;
 	trace_trace.surface = &(nullsurface.c);
 
@@ -38887,9 +37629,6 @@ Handles offseting and rotation of the end points for moving and
 rotating entities
 ==================
 */
-#ifdef _MSC_VER
-#pragma optimize( "", off )
-#endif
 trace_t		CM_TransformedBoxTrace (vec3_t start, vec3_t end, vec3_t mins, vec3_t maxs, int headnode, int brushmask, vec3_t origin, vec3_t angles)
 {
 	trace_t		trace;
@@ -38945,9 +37684,6 @@ trace_t		CM_TransformedBoxTrace (vec3_t start, vec3_t end, vec3_t mins, vec3_t m
 
 	return trace;
 }
-#ifdef _MSC_VER
-#pragma optimize( "", on )
-#endif
 
 
 void SV_ClipMoveToEntities ( moveclip_t *clip )
@@ -39029,7 +37765,7 @@ trace_t SV_Trace (vec3_t start, vec3_t mins, vec3_t maxs, vec3_t end, edict_t *p
 	if (!maxs)
 		maxs = vec3_origin;
 
-	Memset ( &clip, 0, sizeof ( moveclip_t ) );
+	memset ( &clip, 0, sizeof ( moveclip_t ) );
 
 	// clip to world
 	clip.trace = CM_BoxTrace (start, end, mins, maxs, 0, contentmask);
@@ -39719,7 +38455,7 @@ void PM_CatagorizePosition ()
 
 			if (!(trace2.plane.normal[2] < 0.7f && !trace2.startsolid))
 			{
-				Memcpy(&trace, &trace2, sizeof(trace));
+				memcpy(&trace, &trace2, sizeof(trace));
 				pml.groundplane = trace.plane;
 				pml.groundsurface = trace.surface;
 				pml.groundcontents = trace.contents;
@@ -40457,7 +39193,7 @@ void Pmove (pmove_t *pmove)
 	pm->waterlevel = 0;
 
 	// clear all pmove local vars
-	Memset (&pml, 0, sizeof(pml));
+	memset (&pml, 0, sizeof(pml));
 
 	// convert origin and velocity to float values
 	pml.origin[0] = pm->s.origin[0]*0.125;
@@ -40635,7 +39371,7 @@ void StartModGame( void *self )
 	// close dedicated server if runned
 	CloseDedicatedServer();
 
-	Memset(&sti,0,sizeof(STARTUPINFO));
+	memset(&sti,0,sizeof(STARTUPINFO));
 	sti.cb=sizeof(STARTUPINFO);
 
 	if (s_mapname_field.buffer[0])
@@ -40677,7 +39413,6 @@ void StartModGame( void *self )
 //		SetForegroundWindow( glw_state.hWnd );
 //		SetFocus( glw_state.hWnd );
 	}
-	cls.key_dest = key_game;
 #endif
 }
 
@@ -40949,9 +39684,9 @@ void *Sys_GetGameAPI (void *parms)
 	char	name[MAX_OSPATH];
 	char	*path;
 #ifdef _WIN32
-	const char *gamename = "Game.dll";
+	const char *gamename = "game.dll";
 #else
-	const char *gamename = "libgame.so";
+	const char *gamename = "game.so";
 #endif
 
 	if (game_library)
@@ -41192,7 +39927,7 @@ draw:
 	}
 
 	l->sphere = (((int)l->radiuses[0] == (int)l->radiuses[1]) && ((int)l->radiuses[0] == (int)l->radiuses[2]));
-	Memcpy(l->targetname, sl->targetname, MAX_QPATH);
+	memcpy(l->targetname, sl->targetname, MAX_QPATH);
 	l->start_off = sl->start_off;
 	l->noshadow = sl->noshadow;
 	l->noshadow2 = sl->noshadow2;
@@ -41222,10 +39957,10 @@ void R_SpawnLLight(shadowlight_t *sl)
 	l->filtercube_end = sl->filtercube_end;
 	l->framerate = sl->ownerkey;
 	VectorCopy(sl->angles, l->angles);
-	Memcpy(l->label, sl->label, MAX_QPATH);
+	memcpy(l->label, sl->label, MAX_QPATH);
 ///	l->use = true;
 ///	VectorCopy(sl->rspeed, l->rspeed);
-///	Memcpy(l->targetname, sl->targetname, MAX_QPATH);
+///	memcpy(l->targetname, sl->targetname, MAX_QPATH);
 ///	l->start_off = sl->start_off;
 }
 
@@ -41421,7 +40156,7 @@ void SV_InitGame ()
 		ent = EDICT_NUM(i+1);
 		ent->s.number = i+1;
 		svs.clients[i].edict = ent;
-		Memset (&svs.clients[i].lastcmd, 0, sizeof(svs.clients[i].lastcmd));
+		memset (&svs.clients[i].lastcmd, 0, sizeof(svs.clients[i].lastcmd));
 	}
 }
 
@@ -41539,7 +40274,7 @@ void SV_BeginDownload_f()
 		// now maps (note special case for maps, must not be in pak)
 		|| ((strncmp(name, "maps/", 5/*6*/) == 0 && !allow_download_maps->value))	/// Fixed by Berserker
 		// MUST be in a subdirectory
-		|| !strstr (name, "/") )
+		|| !strchr (name, '/') )
 	{	// don't allow anything with .. path
 deny:	MSG_WriteByte (&sv_client->netchan.message, svc_download);
 		MSG_WriteShort (&sv_client->netchan.message, -1);
@@ -41677,7 +40412,7 @@ void SV_SendClientMessages ()
 
 void Cbuf_CopyToDefer ()
 {
-	Memcpy(defer_text_buf, cmd_text_buf, cmd_text.cursize);
+	memcpy(defer_text_buf, cmd_text_buf, cmd_text.cursize);
 	defer_text_buf[cmd_text.cursize] = 0;
 	cmd_text.cursize = 0;
 }
@@ -41773,7 +40508,7 @@ state[2] += c;
 state[3] += d;
 
 	/* Zeroize sensitive information.*/
-	Memset ((POINTER)x, 0, sizeof (x));
+	memset ((POINTER)x, 0, sizeof (x));
 }
 
 
@@ -41796,7 +40531,7 @@ void MD4Update (MD4_CTX *context, byte *input, unsigned inputLen)
 	/* Transform as many times as possible.*/
 	if (inputLen >= partLen)
 	{
- 		Memcpy((POINTER)&context->buffer[index], (POINTER)input, partLen);
+ 		memcpy((POINTER)&context->buffer[index], (POINTER)input, partLen);
 		MD4Transform (context->state, context->buffer);
 
  		for (i = partLen; i + 63 < inputLen; i += 64)
@@ -41808,7 +40543,7 @@ void MD4Update (MD4_CTX *context, byte *input, unsigned inputLen)
  		i = 0;
 
 	/* Buffer remaining input */
-	Memcpy ((POINTER)&context->buffer[index], (POINTER)&input[i], inputLen-i);
+	memcpy ((POINTER)&context->buffer[index], (POINTER)&input[i], inputLen-i);
 }
 
 
@@ -41847,7 +40582,7 @@ void MD4Final (byte digest[16], MD4_CTX *context)
 	Encode (digest, context->state, 16);
 
 	/* Zeroize sensitive information.*/
-	Memset ((POINTER)context, 0, sizeof (*context));
+	memset ((POINTER)context, 0, sizeof (*context));
 }
 
 
@@ -42200,7 +40935,7 @@ void CMod_LoadVisibility (lump_t *l)
 	if (l->filelen > MAX_MAP_VISIBILITY)
 		Com_Error (ERR_DROP, "Map has too large visibility lump");
 
-	Memcpy (map_visibility, cmod_base + l->fileofs, l->filelen);
+	memcpy (map_visibility, cmod_base + l->fileofs, l->filelen);
 
 	map_vis->numclusters = LittleLong (map_vis->numclusters);
 	for (i=0 ; i<map_vis->numclusters ; i++)
@@ -42224,7 +40959,7 @@ cdlight_t *CL_AllocDlight (int key)
 		{
 			if (dl->key == key)
 			{
-				Memset (dl, 0, sizeof(*dl));
+				memset (dl, 0, sizeof(*dl));
 				dl->key = key;
 				return dl;
 			}
@@ -42237,14 +40972,14 @@ cdlight_t *CL_AllocDlight (int key)
 	{
 		if (dl->die < cl.gameTime)
 		{
-			Memset (dl, 0, sizeof(*dl));
+			memset (dl, 0, sizeof(*dl));
 			dl->key = key;
 			return dl;
 		}
 	}
 
 	dl = &cl_dlights[0];
-	Memset (dl, 0, sizeof(*dl));
+	memset (dl, 0, sizeof(*dl));
 	dl->key = key;
 	return dl;
 }
@@ -42266,7 +41001,7 @@ void CL_RunDLights ()
 			dl->radius = 0;
 			return;
 		}
-///		dl->radius -= cls.frametime*dl->decay;
+///		dl->radius -= cls.renderFrameTime*dl->decay;
 		if (dl->radius < 0)
 			dl->radius = 0;
 	}
@@ -42854,14 +41589,14 @@ char *CMod_FilterEnts (char *in, char *out, char **ents, bool it)
 
 		if (!condition_true)
 		{
-			Memcpy (out, bak, in-bak);
+			memcpy (out, bak, in-bak);
 			out += in-bak;
 
 			if (it && worldspawn_ && !VectorCompare(amb, vec3_origin))
 			{
 				char stroka[MAX_QPATH];
 				Com_sprintf (stroka, sizeof(stroka), "\"ambient\" \"%f %f %f\"}", amb[0], amb[1], amb[2]);
-				Memcpy(out-1, stroka, strlen(stroka));
+				memcpy(out-1, stroka, strlen(stroka));
 				out += strlen(stroka)-1;
 				worldspawn_=false;
 			}
@@ -42982,7 +41717,7 @@ unsigned	CMod_LoadEntityString (lump_t *l, char *name)
 	if (l->filelen > MAX_MAP_ENTSTRING)
 		Com_Error (ERR_DROP, "Map has too large entity lump");
 
-	Memset (map_entitystring, 0, MAX_MAP_ENTSTRING);					/// Fixed by Berserker: обнуляем map_entitystring, ибо возможно наложение предыдущей строки в случае отсутствия нуля в загружаемой строке. ("мистика"-баг)
+	memset (map_entitystring, 0, MAX_MAP_ENTSTRING);					/// Fixed by Berserker: обнуляем map_entitystring, ибо возможно наложение предыдущей строки в случае отсутствия нуля в загружаемой строке. ("мистика"-баг)
 	VectorClear(amb);
 	VectorClear(sky_origin);
 	VectorClear(sky_viewcenter);
@@ -43002,7 +41737,7 @@ unsigned	CMod_LoadEntityString (lump_t *l, char *name)
 	if(!r_relight->value)
 		goto stop;
 
-	Memcpy (lit, name, len);
+	memcpy (lit, name, len);
 	lit[len-3] = 'l';
 	lit[len-2] = 'i';
 	lit[len-1] = 't';
@@ -43013,21 +41748,21 @@ unsigned	CMod_LoadEntityString (lump_t *l, char *name)
 	{
 stop:	if (litdata)
 			Z_Free (litdata);
-		Memcpy (map_entitystring, in, l->filelen);
+		memcpy (map_entitystring, in, l->filelen);
 		return 0;		// нет доп.чексуммы (для совместимости со старыми серверами)
 	}
 
 	buf = (char*)Z_Malloc(len+2, false);
 	if(!buf)
 		goto stop;
-///	Memset (buf, 0, len+2);
+///	memset (buf, 0, len+2);
 
 	CMod_ScanForAmbient(litdata);
 	end = CMod_FilterEnts (in, map_entitystring, ents0, true);		// Копируем строку из ент-стринга карты в Out, игнорируя classname, перечисленные в ents0
 // это копирование делать вторым!!! чтоб позже воспользоваться результатом проверки condition_cheat !!!
 	endbuf = CMod_FilterEnts (litdata, buf, ents1, false);			// Копируем строку из релайта в буфер, игнорируя все кроме classname, перечисленные в ents1
 	end[0]=0x0a;
-	Memcpy (end+1, buf, endbuf-buf);								// Дописываем энтитис релайта
+	memcpy (end+1, buf, endbuf-buf);								// Дописываем энтитис релайта
 	unsigned checksum = LittleLong (Com_BlockChecksum (end+1, endbuf-buf));
 	if (condition_cheat)
 		Com_Printf("^1*** cheater's relight detected ***\n");
@@ -43375,18 +42110,18 @@ char *ParseEnt (char *data, shadowlight_t *l, bool server)
 			l->nobump = (bool)atoi(token);
 		else if (!strcmp(keyname, "model"))
 		{
-			Memcpy(l->vis, token, MAX_QPATH);
+			memcpy(l->vis, token, MAX_QPATH);
 			if(l->vis[0]=='*')
 				ent_id = ENT_BRUSHMODEL;
 		}
 		else if (!strcmp(keyname, "map"))
-			Memcpy(l->vis, token, MAX_QPATH-1);
+			memcpy(l->vis, token, MAX_QPATH-1);
 		else if (!strcmp(keyname, "label"))
-			Memcpy(l->label, token, MAX_QPATH);
+			memcpy(l->label, token, MAX_QPATH);
 		else if (!strcmp(keyname, "targetname"))
-			Memcpy(l->targetname, token, MAX_QPATH);
+			memcpy(l->targetname, token, MAX_QPATH);
 		else if (!strcmp(keyname, "noise"))				// клиентские модели не используют targetname, заюзаем как буфер
-			Memcpy(l->targetname, token, MAX_QPATH);
+			memcpy(l->targetname, token, MAX_QPATH);
 		else if (!strcmp(keyname, "classname"))
 		{
 			if(strcmp(token, "light"))
@@ -43520,7 +42255,7 @@ void R_SpawnEmit(shadowlight_t *sl)
 	if (sl->ownerkey > 127)	l->gravity = 127;
 	else if (sl->ownerkey < -128)	l->gravity = -128;
 	else l->gravity = sl->ownerkey;
-	Memcpy(l->label, sl->label, MAX_QPATH);
+	memcpy(l->label, sl->label, MAX_QPATH);
 	l->area = CM_LeafArea (CM_PointLeafnum (l->origin));
 	if (!l->area)
 		Com_DPrintf("Emitter out of BSP at %f %f %f\n", l->origin[0], l->origin[1], l->origin[2]);
@@ -43628,7 +42363,7 @@ bool R_MarkAliasLeaves(alink_t *alias)
 
 	alias->areas[8] = CM_LeafArea (CM_PointLeafnum (org));
 
-	Memset(alias->vis, 0, (((r_worldmodel->numleafs+31)>>5)<<2)/*MAX_MAP_LEAFS/8*/);
+	memset(alias->vis, 0, (((r_worldmodel->numleafs+31)>>5)<<2)/*MAX_MAP_LEAFS/8*/);
 	for (j=0; j<8; j++)
 	{
 		vec3_t	mins_, maxs_;
@@ -43659,7 +42394,7 @@ bool R_MarkAliasLeaves(alink_t *alias)
 		}
 
 		// строим vis-data
-		Memcpy (vis_, CM_ClusterPVS(CM_LeafCluster (CM_PointLeafnum (org))), (((numclusters+31)>>5)<<2));
+		memcpy (vis_, CM_ClusterPVS(CM_LeafCluster (CM_PointLeafnum (org))), (((numclusters+31)>>5)<<2));
 		count = CM_BoxLeafnums (mins_, maxs_, leafs, r_worldmodel->numleafs/*MAX_MAP_LEAFS*/, NULL);
 		if (count < 1)
 			Com_Error (ERR_FATAL, "R_MarkAliasLeaves: count < 1");
@@ -43669,15 +42404,15 @@ bool R_MarkAliasLeaves(alink_t *alias)
 		for (i=0 ; i<count ; i++)
 			leafs[i] = CM_LeafCluster(leafs[i]);
 
-		Memset(&vis, 0, (((r_worldmodel->numleafs+31)>>5)<<2)/*MAX_MAP_LEAFS/8*/);
+		memset(&vis, 0, (((r_worldmodel->numleafs+31)>>5)<<2)/*MAX_MAP_LEAFS/8*/);
 		for (i=0 ; i<count ; i++)
 			vis[leafs[i]>>3] |= (1<<(leafs[i]&7));
 		// вырезаем кластеры, которых нет в списке leafs
 		for (i=0 ; i<((r_worldmodel->numleafs+31)>>5)/*MAX_MAP_LEAFS/32*/ ; i++)
-			((long *)vis_)[i] &= ((long *)vis)[i];
+			((int *)vis_)[i] &= ((int *)vis)[i];
 		// копируем результат в alias->vis
 		for (i=0 ; i<longs ; i++)
-			((long *)alias->vis)[i] |= ((long *)vis_)[i];
+			((int *)alias->vis)[i] |= ((int *)vis_)[i];
 	}
 	return (alias->areas[0] || alias->areas[1] || alias->areas[2] || alias->areas[3] || alias->areas[4] || alias->areas[5] || alias->areas[6] || alias->areas[7] || alias->areas[8]);
 }
@@ -43694,9 +42429,9 @@ void R_SpawnAlias(shadowlight_t *sl)
 
 	VectorCopy(sl->origin, l->origin);
 	VectorCopy(sl->angles, l->angles);
-	Memcpy(l->model, sl->vis, MAX_QPATH);
-	Memcpy(l->label, sl->label, MAX_QPATH);
-	Memcpy(l->sound, sl->targetname, MAX_QPATH);
+	memcpy(l->model, sl->vis, MAX_QPATH);
+	memcpy(l->label, sl->label, MAX_QPATH);
+	memcpy(l->sound, sl->targetname, MAX_QPATH);
 	if (l->sound[0])
 	{
 		if (!strstr (l->sound, ".wav"))
@@ -43776,7 +42511,7 @@ void R_SpawnBrush(shadowlight_t *sl)
 	if (!l)
 		return;
 
-	Memcpy(l->label, sl->label, MAX_QPATH);
+	memcpy(l->label, sl->label, MAX_QPATH);
 	l->nodraw = sl->nobump;
 
 	if (old != brushmodel_counter)
@@ -43839,19 +42574,19 @@ void CM_SpawnEntities (char *entities, bool server)
 	char *token;
 	decals_needs_spawn = false;
 	num_deferred_decals = 0;
-	Memset(deferred_decals, 0, (MAX_DECALS+1)*sizeof(defDecal_t));
+	memset(deferred_decals, 0, (MAX_DECALS+1)*sizeof(defDecal_t));
 
 	if (!server)
 	{
 		aliasmodel_counter = brushmodel_counter = lightmodel_counter = 0;
-		Memset(lightstyles, 0, sizeof(lightstyles));
-		Memset(cl_lightstyles, 0, sizeof(cl_lightstyles));
+		memset(lightstyles, 0, sizeof(lightstyles));
+		memset(cl_lightstyles, 0, sizeof(cl_lightstyles));
 	}
 
 	// parse ents
 	while (1)
 	{
-		Memset (&sl, 0, sizeof(sl));
+		memset (&sl, 0, sizeof(sl));
 
 		// parse the opening brace
 		token = COM_Parse (&entities);
@@ -43999,8 +42734,8 @@ void CM_SpawnEntities (char *entities, bool server)
 					if (sl.style > 0 && sl.style < MAX_LIGHTSTYLES_OVERRIDE)
 					{
 						CheckLightStyle((char*)sl.vis);
-						Memset(lightstyles[sl.style], 0, MAX_QPATH);
-						Memcpy(lightstyles[sl.style], sl.vis, MAX_QPATH-1);
+						memset(lightstyles[sl.style], 0, MAX_QPATH);
+						memcpy(lightstyles[sl.style], sl.vis, MAX_QPATH-1);
 						Com_DPrintf("LightStyle %i overrided with \"%s\"\n", sl.style, lightstyles[sl.style]);
 					}
 			}
@@ -44126,98 +42861,52 @@ IN_StartupJoystick
 */
 void IN_StartupJoystick ()
 {
-	/*int			numdevs;
-	JOYCAPS		jc;
-	MMRESULT	mmr;*/
-	cvar_t		*cv;
-
- 	// assume no joystick
-	joy_avail = false;
+	int				numdevs;
+	cvar_t			*cv;
+	cvar_t			*joy_index;
+	const char		*joy_name;
 
 	// abort startup if user requests no joystick
 	cv = Cvar_Get ("in_initjoy", "1", CVAR_NOSET);
 	if ( !cv->value )
 		return;
 
-	/*SDL_InitSubSystem(SDL_INIT_JOYSTICK);
-
-	// verify joystick driver is present
-	if ((numdevs = SDL_NumJoysticks ()) == 0)
+	if (SDL_InitSubSystem (SDL_INIT_JOYSTICK) < 0)
 	{
-//		Com_Printf ("joystick not found -- driver not present\n\n");
+		Com_Printf ("^1SDL_InitSubSystem(SDL_INIT_JOYSTICK) failed: %s\n\n", SDL_GetError ());
 		return;
-	}
-
-	// cycle through the joystick ids for the first valid one
-	for (joy_id=0 ; joy_id<numdevs ; joy_id++)
-	{
-		memset (&ji, 0, sizeof(ji));
-		ji.dwSize = sizeof(ji);
-		ji.dwFlags = JOY_RETURNCENTERED;
-
-		if ((mmr = joyGetPosEx (joy_id, &ji)) == JOYERR_NOERROR)
-			break;
 	}
 
 	// abort startup if we didn't find a valid joystick
-	if (mmr != JOYERR_NOERROR)
+	if ((numdevs = SDL_NumJoysticks ()) == 0)
 	{
-		Com_Printf ("joystick not found -- no valid joysticks (%x)\n\n", mmr);
+		Com_Printf ("joystick not found -- no valid joysticks\n\n");
+		SDL_QuitSubSystem (SDL_INIT_JOYSTICK);
 		return;
 	}
 
-	// get the capabilities of the selected joystick
-	// abort startup if command fails
-	memset (&jc, 0, sizeof(jc));
-	if ((mmr = joyGetDevCaps (joy_id, &jc, sizeof(jc))) != JOYERR_NOERROR)
+	// allow user to specify joystick by index
+	joy_index = Cvar_Get ("joy_index", "0", CVAR_NOSET);
+
+	if ((joy = SDL_JoystickOpen ((int)joy_index->value)) == NULL)
 	{
-		Com_Printf ("joystick not found -- invalid joystick capabilities (%x)\n\n", mmr);
+		Com_Printf ("^1Failed to open joystick %i\n\n", (int)joy_index->value);
+		SDL_QuitSubSystem (SDL_INIT_JOYSTICK);
 		return;
 	}
+
+	if (joy_name = SDL_JoystickName (joy))
+		Cvar_Set ("joy_name", joy_name);
 
 	// save the joystick's number of buttons and POV status
-	joy_numbuttons = jc.wNumButtons;
-	joy_haspov = jc.wCaps & JOYCAPS_HASPOV;
+	joy_numbuttons = SDL_JoystickNumButtons (joy);
+	joy_numhats = SDL_JoystickNumHats (joy);
 
-	// old button and POV states default to no buttons pressed
-	joy_oldbuttonstate = joy_oldpovstate = 0;
+	// old-school way for querying joystick state - no events
+	SDL_JoystickEventState (SDL_IGNORE);
 
-	// mark the joystick as available and advanced initialization not completed
-	// this is needed as cvars are not available during initialization
-
-	joy_avail = true;
-	joy_advancedinit = false;
-
-	Com_Printf ("joystick detected\n\n"); */
+	Com_Printf ("joystick detected\n\n");
 }
-
-
-/*
-===========
-RawValuePointer
-===========
-*/
-/*
-PDWORD RawValuePointer (int axis)
-{
-	switch (axis)
-	{
-	case JOY_AXIS_X:
-		return &ji.dwXpos;
-	case JOY_AXIS_Y:
-		return &ji.dwYpos;
-	case JOY_AXIS_Z:
-		return &ji.dwZpos;
-	case JOY_AXIS_R:
-		return &ji.dwRpos;
-	case JOY_AXIS_U:
-		return &ji.dwUpos;
-	default:				// shut up compiler
-	case JOY_AXIS_V:
-		return &ji.dwVpos;
-	}
-}
-*/
 
 
 /*
@@ -44229,7 +42918,7 @@ void Joy_AdvancedUpdate_f ()
 {
 	// called once by IN_ReadJoystick and by user whenever an update is needed
 	// cvars are now available
-	/*int	i;
+	int	i;
 	DWORD dwTemp;
 
 	// initialize all the maps
@@ -44237,7 +42926,6 @@ void Joy_AdvancedUpdate_f ()
 	{
 		dwAxisMap[i] = AxisNada;
 		dwControlMap[i] = JOY_ABSOLUTE_AXIS;
-		pdwRawValue[i] = RawValuePointer(i);
 	}
 
 	if( joy_advanced->value == 0.0)
@@ -44278,12 +42966,6 @@ void Joy_AdvancedUpdate_f ()
 		dwAxisMap[JOY_AXIS_V] = dwTemp & 0x0000000f;
 		dwControlMap[JOY_AXIS_V] = dwTemp & JOY_RELATIVE_AXIS;
 	}
-
-	// compute the axes to collect from DirectInput
-	joy_flags = JOY_RETURNCENTERED | JOY_RETURNBUTTONS | JOY_RETURNPOV;
-	for (i = 0; i < JOY_MAX_AXES; i++)
-		if (dwAxisMap[i] != AxisNada)
-			joy_flags |= dwAxisFlags[i];*/
 }
 
 
@@ -44294,89 +42976,61 @@ IN_Commands
 */
 void IN_Commands ()
 {
-	/*int		i, key_index;
-	DWORD	buttonstate, povstate;
+	int		i, key_index;
+	DWORD	buttonstate, hatstate;
 
-	if (!joy_avail)
+	if (joy && in_joystick->value)
+	{
+		SDL_JoystickUpdate ();
+		for (i=0 ; i < JOY_MAX_AXES ; i++)
+			if (dwAxisMap[i] != AxisNada)
+				dwRawValue[i] = SDL_JoystickGetAxis (joy, i);
+	}
+	else
 		return;
 
 	// loop through the joystick buttons
 	// key a joystick event or auxillary event for higher number buttons for each state change
-	buttonstate = ji.dwButtons;
 	for (i=0 ; i < joy_numbuttons ; i++)
 	{
+		buttonstate |= SDL_JoystickGetButton (joy, i) << i;
 		if ( (buttonstate & (1<<i)) && !(joy_oldbuttonstate & (1<<i)) )
 		{
 			key_index = (i < 4) ? K_JOY1 : K_AUX1;
-			Key_Event (key_index + i, true, 0);
+			Key_Event (key_index + i, true);
 		}
 
 		if ( !(buttonstate & (1<<i)) && (joy_oldbuttonstate & (1<<i)) )
 		{
 			key_index = (i < 4) ? K_JOY1 : K_AUX1;
-			Key_Event (key_index + i, false, 0);
+			Key_Event (key_index + i, false);
 		}
 	}
 	joy_oldbuttonstate = buttonstate;
 
-	if (joy_haspov)
+	if (joy_numhats)
 	{
 		// convert POV information into 4 bits of state information
 		// this avoids any potential problems related to moving from one
 		// direction to another without going through the center position
-		povstate = 0;
-		if(ji.dwPOV != JOY_POVCENTERED)
-		{
-			if (ji.dwPOV == JOY_POVFORWARD)
-				povstate |= 0x01;
-			if (ji.dwPOV == JOY_POVRIGHT)
-				povstate |= 0x02;
-			if (ji.dwPOV == JOY_POVBACKWARD)
-				povstate |= 0x04;
-			if (ji.dwPOV == JOY_POVLEFT)
-				povstate |= 0x08;
-		}
+		// SDL does the conversion :D
+
+		hatstate = SDL_JoystickGetHat (joy, 0);
 		// determine which bits have changed and key an auxillary event for each change
 		for (i=0 ; i < 4 ; i++)
 		{
-			if ( (povstate & (1<<i)) && !(joy_oldpovstate & (1<<i)) )
+			if ( (hatstate & (1<<i)) && !(joy_oldhatstate & (1<<i)) )
 			{
-				Key_Event (K_AUX29 + i, true, 0);
+				Key_Event (K_AUX29 + i, true);
 			}
 
-			if ( !(povstate & (1<<i)) && (joy_oldpovstate & (1<<i)) )
+			if ( !(hatstate & (1<<i)) && (joy_oldhatstate & (1<<i)) )
 			{
-				Key_Event (K_AUX29 + i, false, 0);
+				Key_Event (K_AUX29 + i, false);
 			}
 		}
-		joy_oldpovstate = povstate;
-	}*/
-}
-
-
-/*
-===============
-IN_ReadJoystick
-===============
-*/
-bool IN_ReadJoystick ()
-{
-	/*memset (&ji, 0, sizeof(ji));
-	ji.dwSize = sizeof(ji);
-	ji.dwFlags = joy_flags;
-
-	if (joyGetPosEx (joy_id, &ji) == JOYERR_NOERROR)
-		return true;
-	else
-	{
-		// read error occurred
-		// turning off the joystick seems too harsh for 1 read error,\
-		// but what should be done?
-		// Com_Printf ("IN_ReadJoystick: no response\n");
-		// joy_avail = false;
-		return false;
-	}*/
-	return false;
+		joy_oldhatstate = hatstate;
+	}
 }
 
 
@@ -44387,7 +43041,7 @@ IN_JoyMove
 */
 void IN_JoyMove (usercmd_t *cmd)
 {
-	/*float	speed, aspeed;
+	float	speed, aspeed;
 	float	fAxisValue;
 	int		i;
 
@@ -44400,26 +43054,20 @@ void IN_JoyMove (usercmd_t *cmd)
 	}
 
 	// verify joystick is available and that the user wants to use it
-	if (!joy_avail || !in_joystick->value)
-		return;
-
-	// collect the joystick data, if possible
-	if (IN_ReadJoystick () != true)
+	if (!joy || !in_joystick->value)
 		return;
 
 	if ( (in_speed.state & 1) ^ (int)cl_run->value)
 		speed = 2;
 	else
 		speed = 1;
-	aspeed = speed * cls.frametime;
+	aspeed = speed * cls.netFrameTime;
 
 	// loop through the axes
 	for (i = 0; i < JOY_MAX_AXES; i++)
 	{
 		// get the floating point zero-centered, potentially-inverted data for the current axis
-		fAxisValue = (float) *pdwRawValue[i];
-		// move centerpoint to zero
-		fAxisValue -= 32768.0;
+		fAxisValue = (float) dwRawValue[i];
 
 		// convert range from -32768..32767 to -1..1
 		fAxisValue /= 32768.0;
@@ -44495,7 +43143,7 @@ void IN_JoyMove (usercmd_t *cmd)
 		default:
 			break;
 		}
-	}*/
+	}
 }
 
 /*
@@ -44503,27 +43151,6 @@ void IN_JoyMove (usercmd_t *cmd)
 JOYSTICK		END
 =========================================================================
 */
-
-void ClearKeys()
-{
-	in_klook.down[0] = in_klook.down[1] = in_klook.state = 0;
-	in_left.down[0] = in_left.down[1] = in_left.state = 0;
-	in_right.down[0] = in_right.down[1] = in_right.state = 0;
-	in_forward.down[0] = in_forward.down[1] = in_forward.state = 0;
-	in_back.down[0] = in_back.down[1] = in_back.state = 0;
-	in_lookup.down[0] = in_lookup.down[1] = in_lookup.state = 0;
-	in_lookdown.down[0] = in_lookdown.down[1] = in_lookdown.state = 0;
-	in_moveleft.down[0] = in_moveleft.down[1] = in_moveleft.state = 0;
-	in_moveright.down[0] = in_moveright.down[1] = in_moveright.state = 0;
-	in_strafe.down[0] = in_strafe.down[1] = in_strafe.state = 0;
-	in_speed.down[0] = in_speed.down[1] = in_speed.state = 0;
-	in_use.down[0] = in_use.down[1] = in_use.state = 0;
-	in_attack.down[0] = in_attack.down[1] = in_attack.state = 0;
-///	in_flashlight.down[0] = in_flashlight.down[1] = in_flashlight.state = 0;	allow flashlight work in the next map
-	in_zoom.down[0] = in_zoom.down[1] = in_zoom.state = 0;
-	in_up.down[0] = in_up.down[1] = in_up.state = 0;
-	in_down.down[0] = in_down.down[1] = in_down.state = 0;
-}
 
 
 /*
@@ -44561,8 +43188,6 @@ cmodel_t *CM_LoadMap (char *name, bool clientload, unsigned *checksum)
 
 		Cvar_SetValue ("scr_fps_counter_min", 0);
 		Cvar_SetValue ("scr_fps_counter_max", 0);
-
-		ClearKeys();	//	Berserker (experimental): сбросим все клавиши чтобы не было бага "залипания" при заходе на следующую карту...
 	}
 
 	if ( !strcmp (map_name, name) && (clientload || !Cvar_VariableValue ("flushmap")) )
@@ -44571,7 +43196,7 @@ cmodel_t *CM_LoadMap (char *name, bool clientload, unsigned *checksum)
 		if (!clientload)
 		{
 ///			if(!areaportals_from_server)
-				Memset (portalopen, 0, sizeof(portalopen));
+				memset (portalopen, 0, sizeof(portalopen));
 
 			FloodAreaConnections ();
 		}
@@ -44587,8 +43212,8 @@ cmodel_t *CM_LoadMap (char *name, bool clientload, unsigned *checksum)
 	numentitychars = 0;
 
 	//r1: fix for missing terminators on some badly compiled maps
-	Memset (map_entitystring, 0, sizeof(map_entitystring));
-	Memset (map_name, 0, sizeof(map_name));
+	memset (map_entitystring, 0, sizeof(map_entitystring));
+	memset (map_name, 0, sizeof(map_name));
 
 	if (!name || !name[0])
 	{
@@ -44645,7 +43270,7 @@ cmodel_t *CM_LoadMap (char *name, bool clientload, unsigned *checksum)
 	CM_InitBoxHull ();
 
 ///	if(!areaportals_from_server)
-		Memset (portalopen, 0, sizeof(portalopen));
+		memset (portalopen, 0, sizeof(portalopen));
 
 ///	areaportals_from_server = false;
 	FloodAreaConnections ();
@@ -44705,7 +43330,7 @@ areanode_t *SV_CreateAreaNode (int depth, vec3_t mins, vec3_t maxs)
 
 void SV_ClearWorld ()
 {
-	Memset (sv_areanodes, 0, sizeof(sv_areanodes));
+	memset (sv_areanodes, 0, sizeof(sv_areanodes));
 	sv_numareanodes = 0;
 	SV_CreateAreaNode (0, sv.models[1]->mins, sv.models[1]->maxs);
 }
@@ -44884,7 +43509,7 @@ void SV_SpawnServer (char *server, char *spawnpoint, server_state_t serverstate,
 	Com_SetServerState (sv.state);
 
 	// wipe the entire per-level structure
-	Memset (&sv, 0, sizeof(sv));
+	memset (&sv, 0, sizeof(sv));
 	svs.realtime = 0;
 	sv.loadgame = loadgame;
 	sv.attractloop = attractloop;
@@ -45037,7 +43662,7 @@ void SV_Map (bool attractloop, char *levelstring, bool loadgame)
 	strcpy (level, levelstring);
 
 	// if there is a + in the map, set nextserver to the remainder
-	ch = strstr(level, "+");
+	ch = strchr(level, '+');
 	if (ch)
 	{
 		*ch = 0;
@@ -45051,7 +43676,7 @@ void SV_Map (bool attractloop, char *levelstring, bool loadgame)
 		Cvar_Set ("nextserver", "gamemap \"*base1\"");
 
 	// if there is a $, use the remainder as a spawnpoint
-	ch = strstr(level, "$");
+	ch = strchr(level, '$');
 	if (ch)
 	{
 		*ch = 0;
@@ -45223,7 +43848,7 @@ void SV_Map_f ()
 
 	// if not a pic, demo or cinematic, check to make sure the level exists
 	map = Cmd_Argv(1);
-	if (!strstr (map, "."))
+	if (!strchr (map, '.'))
 	{
 		Com_sprintf (expanded, sizeof(expanded), "maps/%s.bsp", map);
 		if (FS_LoadFile (expanded, NULL) == -1)
@@ -45481,14 +44106,14 @@ void R_ResampleShot (byte *indata, int inwidth, int inheight, byte *outdata, int
 		{
 			inrow = (byte *)indata + inwidth*3*yi;
 			if (yi == oldy+1)
-				Memcpy(row1, row2, outwidth*3);
+				memcpy(row1, row2, outwidth*3);
 			else
 				R_ResampleShotLerpLine (inrow, row1, inwidth, outwidth);
 
 			if (yi < endy)
 				R_ResampleShotLerpLine (inrow + inwidth*3, row2, inwidth, outwidth);
 			else
-				Memcpy(row2, row1, outwidth*3);
+				memcpy(row2, row1, outwidth*3);
 			oldy = yi;
 		}
 		if (yi < endy)
@@ -45622,7 +44247,7 @@ void R_FreePic (char *name)
 		{
 			// free it
 			glDeleteTextures (1, &image->texnum);
-			Memset (image, 0, sizeof(*image));
+			memset (image, 0, sizeof(*image));
 			return; //we're done here
 		}
 	}
@@ -45685,7 +44310,7 @@ void SV_Savegame_f ()
 	}
 
 	dir = Cmd_Argv(1);
-	if (strstr (dir, "..") || strstr (dir, "/") || strstr (dir, "\\") )
+	if (strstr (dir, "..") || strchr (dir, '/') || strchr (dir, '\\') )
 	{
 		Com_Printf ("^1Bad savedir.\n");
 		return;
@@ -45766,11 +44391,12 @@ void SV_ReadServerFile ()
 	// these will be things like coop, skill, deathmatch, etc
 	while (1)
 	{
-		if (!fread (name, 1, sizeof(name), f))
+		char cvarname[128];
+		if (!fread (cvarname, 1, sizeof(cvarname), f))
 			break;
 		FS_Read (string, sizeof(string), f);
-		Com_DPrintf ("Set %s = %s\n", name, string);
-		Cvar_ForceSet (name, string);
+		Com_DPrintf ("Set %s = %s\n", cvarname, string);
+		Cvar_ForceSet (cvarname, string);
 	}
 
 	fclose (f);
@@ -45807,7 +44433,7 @@ void SV_Loadgame_f ()
 	Com_Printf ("Loading game...\n");
 
 	dir = Cmd_Argv(1);
-	if (strstr (dir, "..") || strstr (dir, "/") || strstr (dir, "\\") )
+	if (strstr (dir, "..") || strchr (dir, '/') || strchr (dir, '\\') )
 	{
 		Com_Printf ("^1Bad savedir.\n");
 		return;
@@ -45965,8 +44591,6 @@ void CL_ParseConfigString ()
 					savdir = "save";
 				else
 					savdir = "save.q2b";
-				// UCyborg: wut?
-//				strcpy(mapshot, va("pics/../%s/%s/shot.tga", savdir, saved_shot_dir));
 				strcpy(mapshot, va("%s/%s/shot.tga", savdir, saved_shot_dir));
 				FS_ClearFileCache(mapshot);
 				strcpy(mapshot, va("/%s/%s/shot.tga", savdir, saved_shot_dir));
@@ -46155,10 +44779,7 @@ void Con_ToggleChat_f ()
 	if (cls.key_dest == key_console)
 	{
 		if (cls.state == ca_active)
-		{
 			M_ForceMenuOff ();
-			cls.key_dest = key_game;
-		}
 	}
 	else
 		cls.key_dest = key_console;
@@ -46181,15 +44802,10 @@ void Con_MessageMode2_f ()
 }
 
 
-void Con_Get_f ()
-{
-	cls.key_dest = key_get;
-}
-
 void Con_Clear_f ()
 {
-	Memset (con.text, ' ', CON_TEXTSIZE);
-	Memset (con.color, 7, CON_TEXTSIZE);
+	memset (con.text, ' ', CON_TEXTSIZE);
+	memset (con.color, 7, CON_TEXTSIZE);
 }
 
 
@@ -46271,7 +44887,7 @@ void Con_Init ()
 // register our commands
 //
 	con_maxfps = Cvar_Get ("con_maxfps", "25", CVAR_ARCHIVE);
-	con_maxfps->help = "maximal rendering rate for actived menu or console.";
+	con_maxfps->help = "maximal rendering rate for active menu or console.";
 	con_notifytime = Cvar_Get ("con_notifytime", "3", 0);
 	con_transparency = Cvar_Get ("con_transparency", "0", CVAR_ARCHIVE);
 	con_transparency->help = "if set, draws the half-transparent console.";
@@ -46280,7 +44896,6 @@ void Con_Init ()
 	Cmd_AddCommand ("togglechat", Con_ToggleChat_f);
 	Cmd_AddCommand ("messagemode", Con_MessageMode_f);
 	Cmd_AddCommand ("messagemode2", Con_MessageMode2_f);
-	Cmd_AddCommand ("get", Con_Get_f);
 	Cmd_AddCommand ("clear", Con_Clear_f);
 	Cmd_AddCommand ("condump", Con_Dump_f);
 	con.initialized = true;
@@ -46338,7 +44953,9 @@ float ClampCvar( float min, float max, float value )
 
 int QualFromKHZ (int khz)
 {
-	if (khz == 44)
+	if (khz == 48)
+		return 3;
+	else if (khz == 44)
 		return 2;
 	else if (khz == 22)
 		return 1;
@@ -46384,7 +45001,8 @@ void ControlsSetMenuItemValues()
 	s_options_cdvolume_slider.curvalue		= Cvar_VariableValue( "s_musicVolume" ) * 10;
 	s_options_cdvolume_box.curvalue 		= SetMusicValue();
 	s_options_quality_list.curvalue			= QualFromKHZ(Cvar_VariableValue( "s_khz" ));
-	s_options_sensitivity_slider.curvalue	= ( sensitivity->value ) * 5/*2*/;
+	s_options_sensitivity_slider.curvalue	= sensitivity->value * 10/*2*/;
+	s_options_zoomspeed_slider.curvalue		= zoomspeed->value * 10;
 
 	Cvar_SetValue( "cl_run", ClampCvar( 0, 1, cl_run->value ) );
 	s_options_alwaysrun_box.curvalue		= cl_run->value;
@@ -46567,7 +45185,7 @@ void Options_MenuInit()
 	s_options_mutefocus_list.generic.y = 40;
 	s_options_mutefocus_list.generic.name = "mute when inactive";
 	s_options_mutefocus_list.generic.callback = ToggleMuteFocusFunc;
-	s_options_mutefocus_list.itemnames = onoff_names;
+	s_options_mutefocus_list.itemnames = yesno_names;
 	s_options_mutefocus_list.curvalue = Cvar_VariableValue("s_mute_losefocus");
 
 	s_options_sensitivity_slider.generic.type	= MTYPE_SLIDER;
@@ -46575,47 +45193,55 @@ void Options_MenuInit()
 	s_options_sensitivity_slider.generic.y		= 50;
 	s_options_sensitivity_slider.generic.name	= "mouse speed";
 	s_options_sensitivity_slider.generic.callback = MouseSpeedFunc;
-	s_options_sensitivity_slider.minvalue		= 2;
-	s_options_sensitivity_slider.maxvalue		= 50/*22*/;
+	s_options_sensitivity_slider.minvalue		= 1;
+	s_options_sensitivity_slider.maxvalue		= 100/*22*/;
+
+	s_options_zoomspeed_slider.generic.type		= MTYPE_SLIDER;
+	s_options_zoomspeed_slider.generic.x		= 0;
+	s_options_zoomspeed_slider.generic.y		= 60;
+	s_options_zoomspeed_slider.generic.name		= "zoom speed";
+	s_options_zoomspeed_slider.generic.callback	= ZoomSpeedFunc;
+	s_options_zoomspeed_slider.minvalue			= 1;
+	s_options_zoomspeed_slider.maxvalue			= 50;
 
 	s_options_alwaysrun_box.generic.type = MTYPE_SPINCONTROL;
 	s_options_alwaysrun_box.generic.x	= 0;
-	s_options_alwaysrun_box.generic.y	= 60;
+	s_options_alwaysrun_box.generic.y	= 70;
 	s_options_alwaysrun_box.generic.name	= "always run";
 	s_options_alwaysrun_box.generic.callback = AlwaysRunFunc;
 	s_options_alwaysrun_box.itemnames = yesno_names;
 
 	s_options_invertmouse_box.generic.type = MTYPE_SPINCONTROL;
 	s_options_invertmouse_box.generic.x	= 0;
-	s_options_invertmouse_box.generic.y	= 70;
+	s_options_invertmouse_box.generic.y	= 80;
 	s_options_invertmouse_box.generic.name	= "invert mouse";
 	s_options_invertmouse_box.generic.callback = InvertMouseFunc;
 	s_options_invertmouse_box.itemnames = yesno_names;
 
 	s_options_lookspring_box.generic.type = MTYPE_SPINCONTROL;
 	s_options_lookspring_box.generic.x	= 0;
-	s_options_lookspring_box.generic.y	= 80;
+	s_options_lookspring_box.generic.y	= 90;
 	s_options_lookspring_box.generic.name	= "lookspring";
 	s_options_lookspring_box.generic.callback = LookspringFunc;
 	s_options_lookspring_box.itemnames = yesno_names;
 
 	s_options_lookstrafe_box.generic.type = MTYPE_SPINCONTROL;
 	s_options_lookstrafe_box.generic.x	= 0;
-	s_options_lookstrafe_box.generic.y	= 90;
+	s_options_lookstrafe_box.generic.y	= 100;
 	s_options_lookstrafe_box.generic.name	= "lookstrafe";
 	s_options_lookstrafe_box.generic.callback = LookstrafeFunc;
 	s_options_lookstrafe_box.itemnames = yesno_names;
 
 	s_options_freelook_box.generic.type = MTYPE_SPINCONTROL;
 	s_options_freelook_box.generic.x	= 0;
-	s_options_freelook_box.generic.y	= 100;
+	s_options_freelook_box.generic.y	= 110;
 	s_options_freelook_box.generic.name	= "free look";
 	s_options_freelook_box.generic.callback = FreeLookFunc;
 	s_options_freelook_box.itemnames = yesno_names;
 
 	s_options_crosshair_box.generic.type = MTYPE_SPINCONTROL;
 	s_options_crosshair_box.generic.x	= 0;
-	s_options_crosshair_box.generic.y	= 110;
+	s_options_crosshair_box.generic.y	= 120;
 	s_options_crosshair_box.generic.name	= "crosshair";
 	s_options_crosshair_box.generic.callback = CrosshairFunc;
 	s_options_crosshair_box.itemnames = crosshair_names;
@@ -46655,6 +45281,7 @@ void Options_MenuInit()
 	Menu_AddItem( &s_options_menu, ( void * ) &s_options_quality_list );
 	Menu_AddItem( &s_options_menu, ( void * ) &s_options_mutefocus_list );
 	Menu_AddItem( &s_options_menu, ( void * ) &s_options_sensitivity_slider );
+	Menu_AddItem( &s_options_menu, ( void * ) &s_options_zoomspeed_slider );
 	Menu_AddItem( &s_options_menu, ( void * ) &s_options_alwaysrun_box );
 	Menu_AddItem( &s_options_menu, ( void * ) &s_options_invertmouse_box );
 	Menu_AddItem( &s_options_menu, ( void * ) &s_options_lookspring_box );
@@ -46786,7 +45413,13 @@ void AppActivate(bool fActive, bool minimize)
 {
 	Minimized = minimize;
 
-	Key_ClearStates();
+	if (!minimize)
+	{
+		if (!fActive)
+			Key_ClearStates();
+		if (s_mute_losefocus && s_mute_losefocus->value)
+			SDL_PauseAudio(!fActive);
+	}
 
 	// we don't want to act like we're active if we're minimized
 	if (fActive && !Minimized)
@@ -46934,7 +45567,7 @@ void SDL_EventProc(SDL_Event *ev)
 	{
 		case SDL_MOUSEMOTION:
 		{
-			if (mouseactive)
+			if (SDL_GetRelativeMouseMode())
 			{
 				float sens = sensitivity->value * cl.refdef.fov_x * 0.00066f;
 
@@ -46952,90 +45585,16 @@ void SDL_EventProc(SDL_Event *ev)
 			break;
 		}
 		case SDL_MOUSEBUTTONDOWN:
-		{
-			switch (ev->button.button)
-			{
-				case SDL_BUTTON_LEFT:
-				{
-					Key_Event(K_MOUSE1, true);
-					break;
-				}
-				case SDL_BUTTON_RIGHT:
-				{
-					Key_Event(K_MOUSE2, true);
-					break;
-				}
-				case SDL_BUTTON_MIDDLE:
-				{
-					Key_Event(K_MOUSE3, true);
-					break;
-				}
-				case SDL_BUTTON_X1:
-				{
-					Key_Event(K_MOUSE4, true);
-					break;
-				}
-				case SDL_BUTTON_X2:
-				{
-					Key_Event(K_MOUSE5, true);
-					break;
-				}
-				default:
-					break;
-			}
-			break;
-		}
 		case SDL_MOUSEBUTTONUP:
 		{
-			switch (ev->button.button)
-			{
-				case SDL_BUTTON_LEFT:
-				{
-					Key_Event(K_MOUSE1, false);
-					break;
-				}
-				case SDL_BUTTON_RIGHT:
-				{
-					Key_Event(K_MOUSE2, false);
-					break;
-				}
-				case SDL_BUTTON_MIDDLE:
-				{
-					Key_Event(K_MOUSE3, false);
-					break;
-				}
-				case SDL_BUTTON_X1:
-				{
-					Key_Event(K_MOUSE4, false);
-					break;
-				}
-				case SDL_BUTTON_X2:
-				{
-					Key_Event(K_MOUSE5, false);
-					break;
-				}
-				default:
-					break;
-			}
+			if (ev->button.button < SDL_BUTTON_LEFT + 16)
+				Key_Event(199 + ev->button.button, ev->button.state == SDL_PRESSED);
 			break;
 		}
 		case SDL_KEYDOWN:
-		{
-			if (ev->key.keysym.sym == SDLK_RETURN && ev->key.keysym.mod & KMOD_ALT)
-			{
-				if (r_fullscreen)
-				{
-					Cvar_SetValue("r_fullscreen", !r_fullscreen->value);
-					vid_restart = true;
-				}
-			}
-			else
-				Key_Event( MapKey (ev->key.keysym.sym ), true );
-			break;
-		}
 		case SDL_KEYUP:
 		{
-			Key_Event( MapKey( ev->key.keysym.sym ), false );
+			Key_Event( MapKey (ev->key.keysym.sym ), ev->key.state == SDL_PRESSED );
 			break;
 		}
 		case SDL_MOUSEWHEEL:
@@ -47058,35 +45617,17 @@ void SDL_EventProc(SDL_Event *ev)
 			{
 				case SDL_WINDOWEVENT_MOVED:
 				{
-					if (!r_fullscreen->value)
-					{
-						Cvar_SetValue("vid_xpos", (float)ev->window.data1);
-						Cvar_SetValue("vid_ypos", (float)ev->window.data2);
-						vid_xpos->modified = false;
-						vid_ypos->modified = false;
-					}
+					Cvar_SetValue("vid_xpos", (float)ev->window.data1);
+					Cvar_SetValue("vid_ypos", (float)ev->window.data2);
+					vid_xpos->modified = false;
+					vid_ypos->modified = false;
 					break;
 				}
 				case SDL_WINDOWEVENT_MINIMIZED:
-				{
-					AppActivate(false, true);
-					if (s_mute_losefocus && s_mute_losefocus->value)
-						SDL_PauseAudio(1);
-					break;
-				}
 				case SDL_WINDOWEVENT_FOCUS_LOST:
-				{
-					AppActivate(false, false);
-					if (s_mute_losefocus && s_mute_losefocus->value)
-						SDL_PauseAudio(1);
-					break;
-				}
 				case SDL_WINDOWEVENT_FOCUS_GAINED:
 				{
-					// KJB: Watch this for problems in fullscreen modes with Alt-tabbing.
-					AppActivate(true, false);
-					if (s_mute_losefocus && s_mute_losefocus->value)
-						SDL_PauseAudio(0);
+					AppActivate(ev->window.event == SDL_WINDOWEVENT_FOCUS_GAINED, ev->window.event == SDL_WINDOWEVENT_MINIMIZED);
 					break;
 				}
 				case SDL_WINDOWEVENT_CLOSE:
@@ -47150,8 +45691,6 @@ void VID_CheckChanges ()
 		loading_stage = 0;
 		mapshot[0] = 0;
 
-		gamma_initialized_ = -16;	// Для надежности пофиксим гамму на 16 кадре.
-
 		// Berserker: если в игре, сохраним клиентское состояние, т.к. видео рестарт похерит декали, партикли и модели...
 		if (cls.state == ca_active)
 		{
@@ -47170,23 +45709,20 @@ void VID_CheckChanges ()
 		cls.disable_screen = true;
 		cl.force_refdef = true;
 
-		if ( !VID_LoadRefresh() )
-			Com_Error (ERR_FATAL, "Error during initialization video");
+		if (!VID_LoadRefresh())
+			Com_Error(ERR_FATAL, "Error during video initialization");
 
 		/// Berserker: фиксим баг - если отключена вертикальная синхронизация, после vid_restart она сама включается (драйвер?). Форсируем обновление wglSwapIntervalEXT.
 		r_swapinterval->modified = true;
 
- 		cls.disable_screen = false;
+		cls.disable_screen = false;
 	}
 
 	// update our window position
 	if ( vid_xpos->modified || vid_ypos->modified )
 	{
 		if (!r_fullscreen->value)
-		{
-			SDL_SetWindowSize(hWnd, viddef.width, viddef.height);
 			SDL_SetWindowPosition(hWnd, (int)vid_xpos->value, (int)vid_ypos->value);
-		}
 
 		vid_xpos->modified = false;
 		vid_ypos->modified = false;
@@ -47391,7 +45927,7 @@ void RotatePointAroundVector( vec3_t dst, const vec3_t dir, const vec3_t point, 
 	m[1][2] = vf[1];
 	m[2][2] = vf[2];
 
-	Memcpy( im, m, sizeof( im ) );
+	memcpy( im, m, sizeof( im ) );
 
 	im[0][1] = m[1][0];
 	im[0][2] = m[2][0];
@@ -47400,7 +45936,7 @@ void RotatePointAroundVector( vec3_t dst, const vec3_t dir, const vec3_t point, 
 	im[2][0] = m[0][2];
 	im[2][1] = m[1][2];
 
-	Memset( zrot, 0, sizeof( zrot ) );
+	memset( zrot, 0, sizeof( zrot ) );
 	zrot[0][0] = zrot[1][1] = zrot[2][2] = 1.0F;
 
 #if 0
@@ -47867,7 +46403,7 @@ void R_MarkLeaves ()
 			r_worldmodel->leafs[i].visframe = r_visframecount;
 		for (i=0 ; i<r_worldmodel->numnodes ; i++)
 			r_worldmodel->nodes[i].visframe = r_visframecount;
-		Memset(&viewvis, 0xff, (r_worldmodel->numleafs+7)>>3);	// all visible
+		memset(&viewvis, 0xff, (r_worldmodel->numleafs+7)>>3);	// all visible
 		return;
 	}
 
@@ -47875,7 +46411,7 @@ void R_MarkLeaves ()
 	// may have to combine two clusters because of solid water boundaries
 	if (r_viewcluster2 != r_viewcluster)
 	{
-		Memcpy (fatvis, vis, (r_worldmodel->numleafs+7)>>3);
+		memcpy (fatvis, vis, (r_worldmodel->numleafs+7)>>3);
 		vis = Mod_ClusterPVS (r_viewcluster2, r_worldmodel);
 		c = (r_worldmodel->numleafs+31)/32;
 		for (i=0 ; i<c ; i++)
@@ -47883,7 +46419,7 @@ void R_MarkLeaves ()
 		vis = fatvis;
 	}
 
-	Memcpy(&viewvis, vis, (r_worldmodel->numleafs+7)>>3);
+	memcpy(&viewvis, vis, (r_worldmodel->numleafs+7)>>3);
 
 	for (i=0,leaf=r_worldmodel->leafs ; i<r_worldmodel->numleafs ; i++, leaf++)
 	{
@@ -48485,7 +47021,7 @@ void GL_FreeUnusedImages ()
 
 kill:	// free it
 		glDeleteTextures (1, &image->texnum);
-		Memset (image, 0, sizeof(*image));
+		memset (image, 0, sizeof(*image));
 	}
 }
 
@@ -48740,46 +47276,10 @@ force:	glDisable (GL_DEPTH_TEST);
 }
 
 
-#ifdef ENABLE_ASM
-#ifdef _MSC_VER
-#pragma warning (disable:4035)
-#endif
-#endif
-NAKED long Q_ftol( float f )
+static inline int Q_ftol( float f )
 {
-#ifdef ENABLE_ASM
-	static int tmp777;
-#endif
-
-#ifdef ENABLE_ASM
-#ifdef _MSC_VER
-	_asm
-	{
-		fld dword ptr [esp+4]
-		fistp tmp777
-		mov eax, tmp777
-		ret
-	}
-#else
-	__asm__
-	(
-		"flds %1\n"
-		"fistps %0\n"
-		: "=m" (tmp777)
-		: "m" (f)
-		:
-	);
-#endif
-	return tmp777;
-#else
-	return (long)f;
-#endif
+	return (int)f;
 }
-#ifdef ENABLE_ASM
-#ifdef _MSC_VER
-#pragma warning (default:4035)
-#endif
-#endif
 
 
 float SphereInFrustum( vec3_t o, float radius )
@@ -49962,7 +48462,7 @@ void R_DrawAmbientWorld ()
 	VectorCopy (r_origin, modelorg);
 
 	// auto cycle the world frame for texture animation
-	Memset (&ent, 0, sizeof(ent));
+	memset (&ent, 0, sizeof(ent));
 	ent.frame = (int)(r_newrefdef.time*2);
 	currententity = &ent;
 
@@ -52193,7 +50693,7 @@ void Mod_LoadAliasMD3Model ( model_t *mod, void *buffer, float scale, bool inver
 	{
 		for ( l = 0; l < poutmodel->num_tags; l++, pintag++, pouttag++ )
 		{
-			Memcpy ( pouttag->name, pintag->name, MD3_MAX_PATH );
+			memcpy ( pouttag->name, pintag->name, MD3_MAX_PATH );
 			for ( j = 0; j < 3; j++ )
 			{
 				pouttag->orient.origin[j] = LittleFloat ( pintag->orient.origin[j] );
@@ -52215,7 +50715,7 @@ void Mod_LoadAliasMD3Model ( model_t *mod, void *buffer, float scale, bool inver
 	mod->flags = 0;
 	for ( i = 0; i < poutmodel->num_meshes; i++, poutmesh++)
 	{
-		Memcpy (poutmesh->name, pinmesh->name, MD3_MAX_PATH);
+		memcpy (poutmesh->name, pinmesh->name, MD3_MAX_PATH);
 
 		if ( strncmp ((const char *)pinmesh->id, "IDP3", 4))
 			Com_Error ( ERR_DROP, "mesh %s in model %s has wrong id (%i should be %i)", poutmesh->name, mod->name, pinmesh->id, IDMD3HEADER );
@@ -52263,14 +50763,14 @@ void Mod_LoadAliasMD3Model ( model_t *mod, void *buffer, float scale, bool inver
 				poutmesh->img_bumps[j] = poutmesh->img_lights[j] = NULL;
 				continue;
 			}
-///			Memcpy (poutskin->name, pinskin->name, MD3_MAX_PATH);
+///			memcpy (poutskin->name, pinskin->name, MD3_MAX_PATH);
 			if (pinskin->name[0]=='.' && pinskin->name[1]=='.')	// ".."
 				FS_UnionPath(mod->name, pinskin->name, name, sizeof(name));
 			else
-				Memcpy (name, pinskin->name, MD3_MAX_PATH);
+				memcpy (name, pinskin->name, MD3_MAX_PATH);
 			while (RepairPath(name));	/// Berserker: устранение безобразия типа в модели: "models\monsters\tank\tris.md2" - там есть строки типа "models/monsters/tank/../ctank/skin.pcx"
 			int len = strlen(name);
-			char *dot = strstr (name, ".");
+			char *dot = strchr (name, '.');
 			if (dot)
 				k = strlen(dot);
 			else
@@ -52454,8 +50954,8 @@ err:		if (!cache)
 			// for all frames
 			for (l=0; l<poutmodel->num_frames; l++)
 			{
-				Memset(tangents, 0, poutmesh->num_verts*sizeof(vec3_t));
-				Memset(binormals, 0, poutmesh->num_verts*sizeof(vec3_t));
+				memset(tangents, 0, poutmesh->num_verts*sizeof(vec3_t));
+				memset(binormals, 0, poutmesh->num_verts*sizeof(vec3_t));
 				poutvert = poutmesh->vertexes + l * poutmesh->num_verts;
 				for ( j = 0; j < poutmesh->num_verts; j++, pinvert++, poutvert++ )
 				{
@@ -52562,7 +51062,7 @@ err:		if (!cache)
 	char	nam[MAX_OSPATH];
 	char	*buff;
 	i = strlen(mod->name);
-	Memcpy(nam, mod->name, i);
+	memcpy(nam, mod->name, i);
 	nam[i-3]='f';
 	nam[i-2]='x';
 	nam[i]=0;
@@ -52689,7 +51189,7 @@ void Mod_LoadSpriteModel(model_t *mod, void *buffer, bool cache)
 		sprout->frames[i].height = LittleLong (sprin->frames[i].height);
 		sprout->frames[i].origin_x = LittleLong (sprin->frames[i].origin_x);
 		sprout->frames[i].origin_y = LittleLong (sprin->frames[i].origin_y);
-		Memcpy (sprout->frames[i].name, sprin->frames[i].name, MAX_SKINNAME);
+		memcpy (sprout->frames[i].name, sprin->frames[i].name, MAX_SKINNAME);
 		mod->skins[i] = GL_FindImage (sprout->frames[i].name, it_sprite, false, 0, false, 0);	/// !!! Для спрайтов не бывает бампа!!!
 		// не нашли, попробуем взять шкуру используя путь до спрайта
 		if (!mod->skins[i])
@@ -52794,7 +51294,7 @@ bool Mod_LoadAliasModel (model_t *mod, void *buffer, float scale, bool invert, i
 		pinframe = (daliasframe_t *) ((byte *)pinmodel + pheader->ofs_frames + i * pheader->framesize);
 		poutframe = (daliasframe_t *) ((byte *)pheader + pheader->ofs_frames + i * pheader->framesize);
 
-///		Memcpy (poutframe->name, pinframe->name, sizeof(poutframe->name));		// poutframe->name NOT USED ???
+///		memcpy (poutframe->name, pinframe->name, sizeof(poutframe->name));		// poutframe->name NOT USED ???
 		for (j=0 ; j<3 ; j++)
 		{
 			poutframe->scale[j] = LittleFloat (pinframe->scale[j]) * scale;
@@ -52806,7 +51306,7 @@ bool Mod_LoadAliasModel (model_t *mod, void *buffer, float scale, bool invert, i
 			poutframe->translate[1] = -poutframe->translate[1];
 		}
 		// verts are all 8 bit, so no swapping needed
-		Memcpy (poutframe->verts, pinframe->verts, pheader->num_xyz*sizeof(dtrivertx_t));
+		memcpy (poutframe->verts, pinframe->verts, pheader->num_xyz*sizeof(dtrivertx_t));
 	}
 
 //
@@ -52851,7 +51351,7 @@ bool Mod_LoadAliasModel (model_t *mod, void *buffer, float scale, bool invert, i
 	char	nam[MAX_OSPATH];
 	char	*buff;
 	i = strlen(mod->name);
-	Memcpy(nam, mod->name, i);
+	memcpy(nam, mod->name, i);
 	nam[i-3]='f';
 	nam[i-2]='x';
 	nam[i]=0;
@@ -52877,7 +51377,7 @@ bool Mod_LoadAliasModel (model_t *mod, void *buffer, float scale, bool invert, i
 			return false;		// зарезервировано памяти по данным из кэша, а модель имеет другой тип сглаживания! Сброс!
 
 	// register all skins
-	Memcpy ((char *)pheader + pheader->ofs_skins, (char *)pinmodel + pheader->ofs_skins, pheader->num_skins*MAX_SKINNAME);
+	memcpy ((char *)pheader + pheader->ofs_skins, (char *)pinmodel + pheader->ofs_skins, pheader->num_skins*MAX_SKINNAME);
 
 	if (cache)	/// хак: если кэшируем, то нет нужды грузить шкуры.
 		pheader->num_skins = 0;
@@ -52890,7 +51390,7 @@ bool Mod_LoadAliasModel (model_t *mod, void *buffer, float scale, bool invert, i
 			FS_UnionPath(mod->name, (char *)pheader + pheader->ofs_skins + i*MAX_SKINNAME, name, sizeof(name));
 		while (RepairPath(name));	/// Berserker: устранение безобразия типа в модели: "models\monsters\tank\tris.md2" - там есть строки типа "models/monsters/tank/../ctank/skin.pcx"
 		int len = strlen(name);
-		char *dot = strstr (name, ".");
+		char *dot = strchr (name, '.');
 		if (dot)
 			j = strlen(dot);
 		else
@@ -53177,8 +51677,8 @@ okey:	Com_DPrintf("%s: loaded from cache\n", mod->name);
 		for (i=0; i<pheader->num_frames; i++)
 		{
 			//set temp to zero
-			Memset(tangents_, 0, pheader->num_xyz*sizeof(vec3_t));
-			Memset(binormals_, 0, pheader->num_xyz*sizeof(vec3_t));
+			memset(tangents_, 0, pheader->num_xyz*sizeof(vec3_t));
+			memset(binormals_, 0, pheader->num_xyz*sizeof(vec3_t));
 
 			frame = (daliasframe_t *)((byte *)pheader + pheader->ofs_frames + i * pheader->framesize);
 			verts = frame->verts;
@@ -56398,7 +54898,7 @@ if (cl_mod_beam && p->type == part_rail_beam)
 	entity_t	beam;
 	dsprite2_t	*psprite;
 
-	Memset (&beam, 0, sizeof(beam));
+	memset (&beam, 0, sizeof(beam));
 	psprite = (dsprite2_t *)cl_mod_beam->extradata;
 	beam.model = cl_mod_beam;
 	VectorCopy(p->origin, beam.origin);
@@ -57664,14 +56164,13 @@ l3:
 }
 */
 
-/// from Tenebrae, asm by Berserker
-NAKED bool HasSharedLeafs(byte *v1, byte *v2)
+/// from Tenebrae
+bool HasSharedLeafs(byte *v1, byte *v2)
 {
-#ifndef ENABLE_ASM
 	int i, j, k, l;
 	l = r_worldmodel->numleafs>>5;
 	for (i=0 ; i<l ; i++)
-		if (((long *)v1)[i] & ((long *)v2)[i])
+		if (((int *)v1)[i] & ((int *)v2)[i])
 			return true;
 
 	l = (r_worldmodel->numleafs & ~0x1f);
@@ -57685,101 +56184,6 @@ NAKED bool HasSharedLeafs(byte *v1, byte *v2)
 	}
 
 	return false;
-#else
-	int numleafs__ = r_worldmodel->numleafs;
-
-#ifdef _MSC_VER
-	_asm
-	{
-		mov edx, numleafs__
-		mov esi, v1
-		mov edi, v2
-		shr edx, 5
-		jz short l4
-l0:		mov eax, [esi]
-		add esi, 4
-		test eax, [edi]
-		jnz short l3
-		add edi, 4
-		dec edx
-		jnz short l0
-l4:		mov edx, numleafs__
-		mov esi, v1
-		and edx, ~0x1f
-		mov edi, v2
-		cmp edx, numleafs__
-		jz short l5
-l1:		mov eax, edx
-		mov ecx, edx
-		mov ebx, 1
-		and ecx, 7
-		shr eax, 3
-		shl ebx, cl
-		test byte ptr [esi+eax], bl
-		jz short l2
-		test byte ptr [edi+eax], bl
-		jnz short l3
-l2:		inc edx
-		cmp edx, numleafs__
-		jc short l1
-	}
-l5:	return false;
-	_asm
-	{
-l3:
-	}
-	return true;
-#else
-	__asm__ goto
-	(
-		"movl %0,%%edx\n"
-		"movl %1,%%esi\n"
-		"movl %2,%%edi\n"
-		"shrl $5,%%edx\n"
-		"jz 2f\n"
-
-		"1:\n"
-		"movl (%%esi),%%eax\n"
-		"addl $4,%%esi\n"
-		"testl (%%edi),%%eax\n"
-		"jnz %l[ja]\n"
-		"addl $4,%%edi\n"
-		"decl %%edx\n"
-		"jnz 1b\n"
-
-		"2:\n"
-		"movl %0,%%edx\n"
-		"movl %1,%%esi\n"
-		"andl $0xffffffec,%%edx\n"
-		"movl %2,%%edi\n"
-		"cmpl %0,%%edx\n"
-		"jz %l[nein]\n"
-
-		"3:\n"
-		"movl %%edx,%%eax\n"
-		"movl %%edx,%%ecx\n"
-		"movl $1,%%ebx\n"
-		"andl $7,%%ecx\n"
-		"shrl $3,%%eax\n"
-		"shll %%cl,%%ebx\n"
-		"testb %%bl,(%%esi,%%eax)\n"
-		"jz 4f\n"
-		"testb %%bl,(%%edi,%%eax)\n"
-		"jnz %l[ja]\n"
-
-		"4:\n"
-		"incl %%edx\n"
-		"cmpl %0,%%edx\n"
-		"jc 3b\n"
-		:
-		: "m" (numleafs__), "m" (v1), "m" (v2)
-		: "%edx", "%esi", "%edi", "%eax", "%ebx"
-		: nein, ja
-	);
-nein:return false;
-ja:  return true;
-#endif
-#endif
 }
 
 
@@ -58028,7 +56432,7 @@ skip:	Com_DPrintf("Out of BSP, rejected light at %f %f %f\n", currentshadowlight
 	}
 
 	// строим vis-data
-	Memcpy (&currentshadowlight->vis, CM_ClusterPVS(cluster), (((numclusters+31)>>5)<<2));
+	memcpy (&currentshadowlight->vis, CM_ClusterPVS(cluster), (((numclusters+31)>>5)<<2));
 
 	int		leafs[MAX_MAP_LEAFS];
 	int		i, count;
@@ -58051,12 +56455,12 @@ skip:	Com_DPrintf("Out of BSP, rejected light at %f %f %f\n", currentshadowlight
 	for (i=0 ; i<count ; i++)
 		leafs[i] = CM_LeafCluster(leafs[i]);
 
-	Memset(&vis, 0, (((r_worldmodel->numleafs+31)>>5)<<2)/*MAX_MAP_LEAFS/8*/);
+	memset(&vis, 0, (((r_worldmodel->numleafs+31)>>5)<<2)/*MAX_MAP_LEAFS/8*/);
 	for (i=0 ; i<count ; i++)
 		vis[leafs[i]>>3] |= (1<<(leafs[i]&7));
 	// вырезаем кластеры, которых нет в списке leafs
 	for (i=0 ; i<((r_worldmodel->numleafs+31)>>5)/*MAX_MAP_LEAFS/32*/ ; i++)
-		((long *)currentshadowlight->vis)[i] &= ((long *)vis)[i];
+		((int *)currentshadowlight->vis)[i] &= ((int *)vis)[i];
 
 	return true;
 }
@@ -58189,8 +56593,8 @@ void R_InitShadowsForFrame ()
 	numUsedShadowLights = 0;
 
 ///	int len = (r_worldmodel->vis->numclusters+7)>>3;
-///	Memcpy(&viewvis, Mod_ClusterPVS (r_viewcluster, r_worldmodel), len);
-///	Memset(&viewvis[len], 0, ((r_worldmodel->numleafs+7)>>3) - len);	// all other invisible
+///	memcpy(&viewvis, Mod_ClusterPVS (r_viewcluster, r_worldmodel), len);
+///	memset(&viewvis[len], 0, ((r_worldmodel->numleafs+7)>>3) - len);	// all other invisible
 ///	if (!r_mirror)
 ///		viewarea = CM_LeafArea (CM_PointLeafnum (r_origin));	/// not used...
 
@@ -58485,8 +56889,8 @@ yes:		//a. far cap
 	}
 
 	//finish them off with 0
-	lightCmds[lightPos++].asInt = 0;
-	volumeCmds[volumePos++].asInt = 0;
+	lightCmds[lightPos++].asVoid = NULL;
+	volumeCmds[volumePos++].asVoid = NULL;
 
 	numLightCmds = lightPos;
 	numVolumeCmds = volumePos;
@@ -59024,22 +57428,22 @@ void CL_PrepRefresh ()
 					token = COM_Parse (&s);
 					if (!Q_strcasecmp(token, "relaxTrackName"))
 					{
-						Memcpy(trackName_Relax, COM_Parse(&s), sizeof(trackName_Relax));
+						memcpy(trackName_Relax, COM_Parse(&s), sizeof(trackName_Relax));
 						continue;
 					}
 					if (!Q_strcasecmp(token, "tensionTrackName"))
 					{
-						Memcpy(trackName_RelaxToCombat, COM_Parse(&s), sizeof(trackName_RelaxToCombat));
+						memcpy(trackName_RelaxToCombat, COM_Parse(&s), sizeof(trackName_RelaxToCombat));
 						continue;
 					}
 					if (!Q_strcasecmp(token, "combatTrackName"))
 					{
-						Memcpy(trackName_Combat, COM_Parse(&s), sizeof(trackName_Combat));
+						memcpy(trackName_Combat, COM_Parse(&s), sizeof(trackName_Combat));
 						continue;
 					}
 					if (!Q_strcasecmp(token, "calmTrackName"))
 					{
-						Memcpy(trackName_CombatToRelax, COM_Parse(&s), sizeof(trackName_CombatToRelax));
+						memcpy(trackName_CombatToRelax, COM_Parse(&s), sizeof(trackName_CombatToRelax));
 						continue;
 					}
 				}
@@ -59092,10 +57496,10 @@ void CL_PrepRefresh ()
 				}
 
 				if (!trackName_RelaxToCombat[0] && trackName_Combat[0])
-					Memcpy(trackName_RelaxToCombat, trackName_Combat, sizeof(trackName_CombatToRelax));
+					memcpy(trackName_RelaxToCombat, trackName_Combat, sizeof(trackName_CombatToRelax));
 
 				if (!trackName_CombatToRelax[0] && trackName_Relax[0])
-					Memcpy(trackName_CombatToRelax, trackName_Relax, sizeof(trackName_CombatToRelax));
+					memcpy(trackName_CombatToRelax, trackName_Relax, sizeof(trackName_CombatToRelax));
 
 				if (trackName_Relax[0] && trackName_RelaxToCombat[0] && trackName_Combat[0] && trackName_CombatToRelax[0])
 					TrackIsCombat_old = OLD_TRACK_UNKNOWN;
@@ -59117,6 +57521,9 @@ void CL_PrepRefresh ()
 
 	if (TrackIsCombat_old == OLD_TRACK_DISABLED)
 		CL_PlayBackgroundTrack ();
+
+	if (cls.key_dest != key_menu)
+		Cvar_Set ("paused", "0");
 }
 
 void CL_Create_f()
@@ -59127,7 +57534,7 @@ void CL_Create_f()
 	if (le_mode)
 	{
 		llink_t	tlink;
-		Memcpy(&tlink, &link_clipboard, sizeof(llink_t));
+		memcpy(&tlink, &link_clipboard, sizeof(llink_t));
 		link_clipboard.radius = 300;
 		VectorCopy(r_origin, link_clipboard.origin);
 		VectorSet(link_clipboard.color, 1,1,1);
@@ -59138,13 +57545,13 @@ void CL_Create_f()
 		link_clipboard.filtercube_start = link_clipboard.filtercube_end = 0;
 		link_clipboard.framerate = 2;
 		CL_Paste_f();
-		Memcpy(&link_clipboard, &tlink, sizeof(llink_t));
+		memcpy(&link_clipboard, &tlink, sizeof(llink_t));
 	}
 	else
 	{
 		shadowlight_t	tlight;
 
-		Memcpy(&tlight, &light_clipboard, sizeof(shadowlight_t));
+		memcpy(&tlight, &light_clipboard, sizeof(shadowlight_t));
 		light_clipboard.radius = light_clipboard.radiuses[0] = light_clipboard.radiuses[1] = light_clipboard.radiuses[2] = 300;
 		VectorCopy(r_origin, light_clipboard.origin);
 		VectorSet(light_clipboard.color, 1,1,1);
@@ -59162,7 +57569,7 @@ void CL_Create_f()
 		light_clipboard.noshadow2 = false;
 		light_clipboard.nobump = false;
 		CL_Paste_f();
-		Memcpy(&light_clipboard, &tlight, sizeof(shadowlight_t));
+		memcpy(&light_clipboard, &tlight, sizeof(shadowlight_t));
 	}
 
 	Cl_UpdateEditorCvars(ED_LIGHT | ED_MODIFIED);
@@ -59236,9 +57643,9 @@ void CL_LabelBrush_f ()
 			return;				// Не помеченный браш и сброс лейбла - ничего не делаем.
 		if (CheckBrushLabel(arg))
 		{
-			Memcpy(sl.label, arg, MAX_QPATH);
+			memcpy(sl.label, arg, MAX_QPATH);
 			Com_sprintf(buf, sizeof(buf), "*%i", curbrushnum);
-			Memcpy(sl.vis, buf, sizeof(buf));
+			memcpy(sl.vis, buf, sizeof(buf));
 			sl.nobump = false;
 			VectorCopy(curbrush->origin, sl.origin);
 			R_SpawnBrush(&sl);
@@ -59253,7 +57660,7 @@ void CL_LabelBrush_f ()
 			if (i<brushmodel_counter-1)
 			{	// если не последний в списке, то придётся смещать список вниз
 				for (; i<brushmodel_counter-1; i++)
-					Memcpy(&bmdl_list[i], &bmdl_list[i+1], sizeof(blink_t));
+					memcpy(&bmdl_list[i], &bmdl_list[i+1], sizeof(blink_t));
 			}
 			brushmodel_counter--;
 			Com_Printf("Label deleted.\n");
@@ -59263,7 +57670,7 @@ void CL_LabelBrush_f ()
 		{
 			if (CheckBrushLabel(arg))
 			{
-				Memcpy(bmdl_list[i].label, arg, MAX_QPATH);	// просто сменим label
+				memcpy(bmdl_list[i].label, arg, MAX_QPATH);	// просто сменим label
 				Com_Printf("Label changed.\n");
 				Cl_UpdateEditorCvars(ED_BRUSH | ED_MODIFIED);
 			}
@@ -59552,16 +57959,16 @@ bool R_CalcSLight()
 
 	if(numLightCmds >= 1)
 	{
-		currentshadowlight->lightCmds = (lightcmd_t *)Z_Malloc(numLightCmds * 4, true);
-		Memcpy(currentshadowlight->lightCmds, &lightCmdsBuff, numLightCmds * 4);
+		currentshadowlight->lightCmds = (lightcmd_t *)Z_Malloc(numLightCmds * sizeof(lightcmd_t), true);
+		memcpy(currentshadowlight->lightCmds, &lightCmdsBuff, numLightCmds * sizeof(lightcmd_t));
 	}
 	else
 		currentshadowlight->lightCmds = NULL;
 
 	if(numVolumeCmds >= 2)
 	{
-		currentshadowlight->volumeCmds = (lightcmd_t *)Z_Malloc(numVolumeCmds * 4, true);
-		Memcpy(currentshadowlight->volumeCmds, &volumeCmdsBuff, numVolumeCmds * 4);
+		currentshadowlight->volumeCmds = (lightcmd_t *)Z_Malloc(numVolumeCmds * sizeof(lightcmd_t), true);
+		memcpy(currentshadowlight->volumeCmds, &volumeCmdsBuff, numVolumeCmds * sizeof(lightcmd_t));
 		CreateShadowVBO();
 	}
 	else
@@ -62843,7 +61250,7 @@ void R_DrawWorldBumped()
 {
 	entity_t	ent;
 	// auto cycle the world frame for texture animation
-	Memset (&ent, 0, sizeof(ent));
+	memset (&ent, 0, sizeof(ent));
 	ent.frame = (int)(r_newrefdef.time*2);
 	currententity = &ent;
 
@@ -63516,7 +61923,7 @@ void HACK_RecalcVertsLightNormalIdx (dmdl_t *pheader, bool invert)
 		}
 */
 		vec3_t	normals_[MAX_VERTS];
-		Memset(normals_, 0, pheader->num_xyz*sizeof(vec3_t));
+		memset(normals_, 0, pheader->num_xyz*sizeof(vec3_t));
 
 		//for all tris
 		for (j=0; j<pheader->num_tris; j++)
@@ -63631,7 +62038,7 @@ void Mod_LoadLighting (lump_t *l)
 	}
 	loadmodel->lightdata = (byte *) Hunk_Alloc ( l->filelen, true );		// выделять память обязательно даже при кэшировании, чтоб получить верный *.mem
 	if (!caching__)		// при кэшировании пропустим этот шаг
-		Memcpy (loadmodel->lightdata, mod_base + l->fileofs, l->filelen);
+		memcpy (loadmodel->lightdata, mod_base + l->fileofs, l->filelen);
 }
 
 
@@ -63839,7 +62246,7 @@ void SubdividePolygon (int numverts, float *verts)
 	poly->verts[0][4] = total_t*sca;
 
 	// copy first vertex to last
-	Memcpy (poly->verts[i+1], poly->verts[1], sizeof(poly->verts[0]));
+	memcpy (poly->verts[i+1], poly->verts[1], sizeof(poly->verts[0]));
 }
 
 
@@ -63884,7 +62291,7 @@ void GL_SubdivideSurface (msurface_t *fa)
 
 void LM_InitBlock ()
 {
-	Memset( gl_lms.allocated, 0, sizeof( gl_lms.allocated ) );
+	memset( gl_lms.allocated, 0, sizeof( gl_lms.allocated ) );
 }
 
 
@@ -64172,7 +62579,7 @@ void Mod_LoadVisibility (lump_t *l)
 	loadmodel->vis = (dvis_t *) Hunk_Alloc ( l->filelen, true );
 	if (caching__)
 		return;
-	Memcpy (loadmodel->vis, mod_base + l->fileofs, l->filelen);
+	memcpy (loadmodel->vis, mod_base + l->fileofs, l->filelen);
 
 	loadmodel->vis->numclusters = LittleLong (loadmodel->vis->numclusters);
 	for (i=0 ; i<loadmodel->vis->numclusters ; i++)
@@ -64402,7 +62809,7 @@ void Create_Cache (char *ext, char *ext2, char *path, char *path2, void (*Create
 						{
 							if(!b_stricmp(ZipCache[i].pak_name, pak->filename))
 							{
-								Memcpy(&pf, &ZipCache[i], sizeof(zipfile_t));		// Нашли уже открытый ZIP и загрузили его описатель в pf
+								memcpy(&pf, &ZipCache[i], sizeof(zipfile_t));		// Нашли уже открытый ZIP и загрузили его описатель в pf
 								goto clc;
 							}
 						}
@@ -64419,7 +62826,7 @@ void Create_Cache (char *ext, char *ext2, char *path, char *path2, void (*Create
 				strcpy(&ZipCache[slot].pak_name[0], pak->filename);	// Если не нашли zip в кэше, откроем его...
 				if (!PackFileOpen (&ZipCache[slot]))
 					Com_Error(ERR_FATAL, "Error opening pk2-file: %s", pak->filename);
-				Memcpy(&pf, &ZipCache[slot], sizeof(zipfile_t));
+				memcpy(&pf, &ZipCache[slot], sizeof(zipfile_t));
 				goto clc2;
 clc:			slot = i;
 clc2:			for(i=0; i<pf.gi.number_entry; i++)
@@ -64427,7 +62834,7 @@ clc2:			for(i=0; i<pf.gi.number_entry; i++)
 					if(pf.fi[i].size)
 					{
 						char	nam[256];
-						Memcpy(nam, pf.fi[i].name, 256);
+						memcpy(nam, pf.fi[i].name, 256);
 						if(!Q_strncasecmp(nam, path, strlen(path)))
 						{
 							if(!Q_strcasecmp(nam+strlen(nam)-4, ext))
@@ -64449,7 +62856,7 @@ clc2:			for(i=0; i<pf.gi.number_entry; i++)
 				for (i=0 ; i<pak->numfiles ; i++)
 				{
 					char	nam[256];
-					Memcpy(nam, pak->files[i].name, 256);
+					memcpy(nam, pak->files[i].name, 256);
 					if(!Q_strncasecmp(nam, path, strlen(path)))
 						if(!Q_strcasecmp(nam+strlen(nam)-4, ext))
 						{
@@ -64755,7 +63162,7 @@ bool InLightVISEntity()
 		for (i=0 ; i<count ; i++)
 			leafs[i] = CM_LeafCluster(leafs[i]);
 
-		Memset(&currententity->vis, 0, (((r_worldmodel->numleafs+31)>>5)<<2)/*MAX_MAP_LEAFS/8*/);
+		memset(&currententity->vis, 0, (((r_worldmodel->numleafs+31)>>5)<<2)/*MAX_MAP_LEAFS/8*/);
 		for (i=0 ; i<count ; i++)
 			currententity->vis[leafs[i]>>3] |= (1<<(leafs[i]&7));
 
@@ -66050,7 +64457,7 @@ void GL_DrawAliasFrameLerpLightATI4 (dmdl_t *paliashdr)
 	daliasframe_t	*frame, *oldframe;
 	dtrivertx_t	*verts, *oldverts;
 	WORD		cache[MAX_VERTS];
-	Memset(cache, 0xff, 2*MAX_VERTS);
+	memset(cache, 0xff, 2*MAX_VERTS);
 	float	backlerp, frontlerp;
 
 ///	if ( r_lerpmodels->value )
@@ -66257,7 +64664,7 @@ void GL_DrawAliasFrameLerpLightATI6 (dmdl_t *paliashdr)
 	daliasframe_t	*frame, *oldframe;
 	dtrivertx_t	*verts, *oldverts;
 	WORD		cache[MAX_VERTS];
-	Memset(cache, 0xff, 2*MAX_VERTS);
+	memset(cache, 0xff, 2*MAX_VERTS);
 	float	backlerp, frontlerp;
 
 ///	if ( r_lerpmodels->value )
@@ -66492,7 +64899,7 @@ void GL_DrawAliasFrameLerpLightARB (dmdl_t *paliashdr, int shader)
 	dtrivertx_t	*verts, *oldverts;
 	WORD		cache[MAX_VERTS];
 	bool		need_tsH = (!currentshadowlight->nobump && !(shader==SHADER_ARB4 && currentshadowlight->filtercube_start));
-	Memset(cache, 0xff, 2*MAX_VERTS);
+	memset(cache, 0xff, 2*MAX_VERTS);
 	float	backlerp, frontlerp;
 
 ///	if ( r_lerpmodels->value )
@@ -67630,7 +66037,7 @@ void GL_DrawAliasFrameLerpLight (dmdl_t *paliashdr, bool onepass)
 	daliasframe_t	*frame, *oldframe;
 	dtrivertx_t	*verts, *oldverts;
 	WORD		cache[MAX_VERTS];
-	Memset(cache, 0xff, 2*MAX_VERTS);
+	memset(cache, 0xff, 2*MAX_VERTS);
 	float	backlerp, frontlerp;
 
 ///	if ( r_lerpmodels->value )
@@ -70545,18 +68952,18 @@ stp:;		int sk = -1;		// skin counter
 						if (temps[0]=='.' && temps[1]=='.')	// ".."
 							FS_UnionPath(mod->name, temps, name, sizeof(name));
 						else
-							Memcpy(name, temps, MD3_MAX_PATH);		// копируем относительный путь
+							memcpy(name, temps, MD3_MAX_PATH);		// копируем относительный путь
 					}
 					else
 					{
 						if (token[0]=='.' && token[1]=='.')	// ".."
 							FS_UnionPath(mod->name, token, name, sizeof(name));
 						else
-							Memcpy(name, token, MD3_MAX_PATH);		// иначе попробуем то что было прописано
+							memcpy(name, token, MD3_MAX_PATH);		// иначе попробуем то что было прописано
 					}
 					while (RepairPath(name));	/// Berserker: устранение безобразия типа в модели: "models\monsters\tank\tris.md2" - там есть строки типа "models/monsters/tank/../ctank/skin.pcx"
 					i=strlen(name);
-					char *dot = strstr (name, ".");
+					char *dot = strchr (name, '.');
 					int kl;
 					if (dot)
 						kl = strlen(dot);
@@ -70747,7 +69154,7 @@ badM:					skins[idx][sk] = r_notexture;
 			node_skipped = -1;
 			mesh++;
 			mod->skins[mesh] = NULL;
-			Memset(mat, 0, 3*3*sizeof(float));
+			memset(mat, 0, 3*3*sizeof(float));
 			continue;
 		}
 		if (!strcmp(token, "*NODE_TM"))
@@ -70805,7 +69212,7 @@ badM:					skins[idx][sk] = r_notexture;
 			node_skipped--;
 			if (mesh>=0)
 			{
-				Memcpy(poutmesh[mesh].name, COM_Parse(&buf), MD3_MAX_PATH);
+				memcpy(poutmesh[mesh].name, COM_Parse(&buf), MD3_MAX_PATH);
 				continue;
 			}
 		}
@@ -70984,8 +69391,8 @@ badM:					skins[idx][sk] = r_notexture;
 				Com_Error ( ERR_DROP, "mesh %s in model %s has no vertices", poutmesh[mesh].name, mod->name );
 			else if (poutmesh[mesh].num_verts>MD3_MAX_VERTS)
 				Com_Error ( ERR_DROP, "mesh %s in model %s has too many vertices", poutmesh[mesh].name, mod->name );
-			Memset(tangents, 0, poutmesh[mesh].num_verts*sizeof(vec3_t));
-			Memset(binormals, 0, poutmesh[mesh].num_verts*sizeof(vec3_t));
+			memset(tangents, 0, poutmesh[mesh].num_verts*sizeof(vec3_t));
+			memset(binormals, 0, poutmesh[mesh].num_verts*sizeof(vec3_t));
 			if (!poutvert)
 				poutmesh[mesh].vertexes = (maliasvertex_t*) Hunk_Alloc(poutmodel->num_frames * poutmesh[mesh].num_verts * sizeof(maliasvertex_t), true);
 			poutvert = &poutmesh[mesh].vertexes[frm * poutmesh[mesh].num_verts];
@@ -71157,7 +69564,7 @@ badM:					skins[idx][sk] = r_notexture;
 	char	nam[MAX_OSPATH];
 	char	*buff;
 	i = strlen(mod->name);
-	Memcpy(nam, mod->name, i);
+	memcpy(nam, mod->name, i);
 	nam[i-3]='f';
 	nam[i-2]='x';
 	nam[i-1]='a';
@@ -72008,7 +70415,7 @@ void CL_FixUpGender()
 
 		char	nam[MAX_OSPATH];
 		char	*buff, *sex = NULL;
-		Memcpy(gender_model, skin->string, MAX_QPATH-1);
+		memcpy(gender_model, skin->string, MAX_QPATH-1);
 		gender_model[MAX_QPATH-1]=0;
 		char *p = strchr(gender_model, '/');
 		if (p)
@@ -72293,8 +70700,8 @@ void R_Mirror (mirror_t *mir)
 	refdef_t	refdef, oldrefdef;
 	vec3_t		real_vieworg, mir_sun_origin;
 
-	Memcpy(&oldrefdef, &r_newrefdef, sizeof(refdef_t));
-	Memcpy(&refdef, &r_newrefdef, sizeof(refdef_t));
+	memcpy(&oldrefdef, &r_newrefdef, sizeof(refdef_t));
+	memcpy(&refdef, &r_newrefdef, sizeof(refdef_t));
 	R_SaveRenderState();
 ///	r_finish->value = 0;
 
@@ -72356,7 +70763,7 @@ void R_Mirror (mirror_t *mir)
 	glDisable( GL_SCISSOR_TEST );
 
 	R_RestoreRenderState();
-	Memcpy(&r_newrefdef, &oldrefdef, sizeof(refdef_t));
+	memcpy(&r_newrefdef, &oldrefdef, sizeof(refdef_t));
 }
 
 
@@ -72595,14 +71002,14 @@ void R_SetupMirrorFrame(byte *vis)
 	int longs = (r_worldmodel->numleafs+31)>>5;
 	AngleVectors (r_newrefdef.viewangles, vpn, vright, vup);
 
-	Memcpy(vis, &viewvis, longs<<2);
-	Memcpy(&viewvis, CM_ClusterPVS(CM_LeafCluster(CM_PointLeafnum(mirror_plane->chain->center))), longs<<2);
+	memcpy(vis, &viewvis, longs<<2);
+	memcpy(&viewvis, CM_ClusterPVS(CM_LeafCluster(CM_PointLeafnum(mirror_plane->chain->center))), longs<<2);
 
 	for (s = mirror_plane->chain->mirrorchain ; s ; s=s->mirrorchain)
 	{
 		byte *tempvis = CM_ClusterPVS(CM_LeafCluster(CM_PointLeafnum(s->center)));
 		for (j=0 ; j<longs ; j++)
-			((long *)viewvis)[j] |= ((long *)tempvis)[j];
+			((int *)viewvis)[j] |= ((int *)tempvis)[j];
 	}
 
 	r_visframecount++;
@@ -72633,7 +71040,7 @@ void R_RestoreFrame(byte *vis)
 	int				i, cluster;
 
 	int longs = (r_worldmodel->numleafs+31)>>5;
-	Memcpy(&viewvis, vis, longs<<2);
+	memcpy(&viewvis, vis, longs<<2);
 
 	r_visframecount++;
 	for (i=0,leaf=r_worldmodel->leafs ; i<r_worldmodel->numleafs ; i++, leaf++)
@@ -72690,7 +71097,7 @@ void R_RenderShadowVolumes(bool SelfShadow, bool all)
 		if (currentshadowlight->volumeCmds && currentshadowlight->lightCmds/* && !currentshadowlight->noshadow*/)	//При noshadow и так volumeCmds == NULL
 			R_DrawWorldShadowVolumes();
 		if (!currentshadowlight->noshadow2)
-			R_DrawEntsShadowVolumes(NULL, true);
+			R_DrawEntsShadowVolumes(false, true);
 	}
 	else
 	{
@@ -72931,7 +71338,7 @@ void Mod_LoadFaces (lump_t *l)
 		// Allocate storage for our edge table
 		tempEdges = (temp_connect_t *)Z_Malloc(currentmodel->numedges * sizeof(temp_connect_t), true);
 ///		// clear tempedges
-///		Memset(tempEdges, 0, currentmodel->numedges * sizeof(temp_connect_t));
+///		memset(tempEdges, 0, currentmodel->numedges * sizeof(temp_connect_t));
 	}
 
 	GL_BeginBuildingLightmaps ();
@@ -73327,7 +71734,7 @@ void R_RenderLighting(bool SelfShadow, bool all)
 				R_DrawWorldBumped();
 			R_DrawLightBrushes();
 		}
-		R_DrawLightAliases(NULL, true);
+		R_DrawLightAliases(false, true);
 	}
 	else
 	{
@@ -73457,8 +71864,8 @@ void R_DrawSkyWorld()
 
 	drawing_sky_world = true;
 
-	Memcpy(&oldrefdef, &r_newrefdef, sizeof(refdef_t));
-	Memcpy(&refdef, &r_newrefdef, sizeof(refdef_t));
+	memcpy(&oldrefdef, &r_newrefdef, sizeof(refdef_t));
+	memcpy(&refdef, &r_newrefdef, sizeof(refdef_t));
 	old_framecount = r_framecount;
 	old_occ_framecount = occ_framecount;
 ///	old_r_finish = r_finish->value;
@@ -73490,7 +71897,7 @@ void R_DrawSkyWorld()
 
 	fps_count = old_fps_count;
 ///	r_finish->value = old_r_finish;
-	Memcpy(&r_newrefdef, &oldrefdef, sizeof(refdef_t));
+	memcpy(&r_newrefdef, &oldrefdef, sizeof(refdef_t));
 	r_framecount = old_framecount;
 	occ_framecount = old_occ_framecount;
 
@@ -73817,10 +72224,10 @@ la:			// проверим, есть ли поверхности, которые 
 			case 0:
 				// Рисуем все тени
 				if(shad)
-					R_RenderShadowVolumes(NULL, true);
+					R_RenderShadowVolumes(false, true);
 
 				// Рисуем все освещенные плоскости
-				R_RenderLighting(NULL, true);
+				R_RenderLighting(false, true);
 				break;
 			case 1:
 				// Рисуем тени от обычных сурфов
@@ -73950,7 +72357,7 @@ skip:	glEnable( GL_TEXTURE_2D );
 		{
 			R_PolyBlend();
 			// После последнего прорисованного объекта в основном RenderView (не mirror и не SkyWorld) грабим экран для bloom
-			if (!do_bloom && gl_config.screentexture && (r_bloom->value>0 && r_bloom->value<=3 && r_fullscreen->value))
+			if (!do_bloom && gl_config.screentexture && (r_bloom->value>0 && r_bloom->value<=3))
 			{
 				GL_SelectTexture(GL_TEXTURE0);
 				R_GrabScreenToTexture();
@@ -74207,7 +72614,7 @@ void R_FreeUnusedMaterials()
 			}
 		}
 		else
-			Memset (material, 0, sizeof(*material));	// free it
+			memset (material, 0, sizeof(*material));	// free it
 	}
 }
 
@@ -74276,9 +72683,9 @@ void R_MemInfo_f ()
 void VID_Init ()
 {
 	/* Create the video variables so we know how to start the graphics drivers */
-	vid_xpos = Cvar_Get ("vid_xpos", "3", CVAR_ARCHIVE);
+	vid_xpos = Cvar_Get ("vid_xpos", "6", CVAR_ARCHIVE);
 	vid_xpos->help = "X coordinate of Bers@Q2 window position.";
-	vid_ypos = Cvar_Get ("vid_ypos", "22", CVAR_ARCHIVE);
+	vid_ypos = Cvar_Get ("vid_ypos", "44", CVAR_ARCHIVE);
 	vid_ypos->help = "Y coordinate of Bers@Q2 window position.";
 	r_fullscreen = Cvar_Get ("r_fullscreen", "0", CVAR_ARCHIVE|CVAR_VID_LATCH);
 	vid_hz = Cvar_Get ("vid_hz", "0", CVAR_ARCHIVE|CVAR_VID_LATCH);
@@ -74453,7 +72860,7 @@ void SCR_Init ()
 	scr_draw2d = Cvar_Get("scr_draw2d", "2", 0);
 	scr_draw2d->help = "show 2d info: 0 - disable, 1 - all except a crosshair, 2 - show all.";
 	scr_viewsize = Cvar_Get ("viewsize", "100", 0);
-	scr_viewsize->help = "size of game window, ignored if mirrors or fullscreen bloom present.";
+	scr_viewsize->help = "size of game window, works only with simple renderer.";
 	scr_fps = Cvar_Get ("scr_fps", "0", CVAR_ARCHIVE);
 	scr_fps->help = "show FPS counter.";
 	scr_fps_min = Cvar_Get ("scr_fps_counter_min", "0", 0);
@@ -74520,8 +72927,7 @@ void GL_BuildPolygonFromSurface(msurface_t *fa)
 	fa->polys = poly;
 	poly->numverts = lnumverts;
 	// reserve space for neighbour pointers
-	// FIXME: pointers don't need to be 4 bytes
-	poly->neighbours = (glpoly_t **)Hunk_Alloc (lnumverts*4, true);
+	poly->neighbours = (glpoly_t **)Hunk_Alloc (lnumverts*sizeof(glpoly_t *), true);
 
 /// Berserker's QUAKE2 RETEXTURING !!!
 	if (fa->texinfo->image->fx_original_size_s != -1)
@@ -74881,6 +73287,7 @@ void CL_ForwardToServer_f ()
 	{
 		MSG_WriteByte (&cls.netchan.message, clc_stringcmd);
 		SZ_Print (&cls.netchan.message, Cmd_Args());
+		cls.forcePacket = true;
 	}
 }
 
@@ -74957,7 +73364,7 @@ void CL_PingServers_f ()
 	}
 
 	// send a packet to each address book entry
-	for (i=0 ; i<16 ; i++)
+	for (i=0 ; i<NUM_ADDRESSBOOK_ENTRIES ; i++)
 	{
 		Com_sprintf (name, sizeof(name), "adr%i", i);
 		adrstring = Cvar_VariableString (name);
@@ -74992,15 +73399,17 @@ void CL_Userinfo_f ()
 }
 
 
-///void CL_Disconnect_f ()
-///{
-///	Com_Error (ERR_DROP, "Disconnected from server");
-///}
+void CL_Disconnect_f ()
+{
+	if (cls.state != ca_disconnected)
+	{
+		Com_Error(ERR_DROP, "Disconnected from server");
+	}
+}
 
 
 void CL_Quit_f ()
 {
-	CL_Disconnect ();
 	Com_Quit ();
 }
 
@@ -75019,10 +73428,6 @@ void CL_Connect_f ()
 	if (Com_ServerState ())
 	{	// if running a local server, kill it and reissue
 		SV_Shutdown (va("Server quit\n", msg), false);
-	}
-	else
-	{
-		CL_Disconnect ();
 	}
 
 	server = Cmd_Argv (1);
@@ -75059,9 +73464,9 @@ void CL_Reconnect_f ()
 	if (cls.state == ca_connected)
 	{
 		Com_Printf ("reconnecting...\n");
-///		cls.state = ca_connected;
 		MSG_WriteByte (&cls.netchan.message, clc_stringcmd);
 		MSG_WriteString (&cls.netchan.message, "new");
+		cls.forcePacket = true;
 		return;
 	}
 
@@ -75182,7 +73587,7 @@ void S_EndRegistration ()
 				Z_Free (sfx->cache);	// from a server that didn't finish loading
 			if (sfx->truename)
 				Z_Free (sfx->truename); // memleak fix from echon
-			Memset (sfx, 0, sizeof(*sfx));
+			memset (sfx, 0, sizeof(*sfx));
 		}
 		else
 		{	// make sure it is paged in
@@ -75437,7 +73842,7 @@ model_t *R_RegisterModel (char *name, float scale, bool invert)		// scale - for 
 					mod->bumps[i] = mod->lights[i] = NULL;
 					continue;
 				}
-				Memcpy(nam, (char *)pheader + pheader->ofs_skins + i*MAX_SKINNAME, len+1);
+				memcpy(nam, (char *)pheader + pheader->ofs_skins + i*MAX_SKINNAME, len+1);
 				nam[len-4] = 0;
 				mod->skins[i] = GL_FindImage (nam, it_skin, false, 0, false, 0);
 				if(!r_simple->value)
@@ -75501,7 +73906,7 @@ model_t *R_RegisterModel (char *name, float scale, bool invert)		// scale - for 
 					}
 					char nam[MAX_QPATH+16];
 					len = strlen(mesh->img_skins[k]->name);
-					Memcpy(nam, mesh->img_skins[k]->name, len+1);
+					memcpy(nam, mesh->img_skins[k]->name, len+1);
 					mesh->img_skins[k] = GL_FindImage(nam, it_skin, false, 0, false, 0);
 					if(mesh->img_skins[k] && !r_simple->value)
 					{
@@ -75735,7 +74140,7 @@ povtor:		if (!(cc = *text))
 	}
 
 	// baselines
-	Memset (&nullstate, 0, sizeof(nullstate));
+	memset (&nullstate, 0, sizeof(nullstate));
 	for (i=0; i<MAX_EDICTS ; i++)
 	{
 		ent = &cl_entities[i].baseline;
@@ -76652,8 +75057,8 @@ void CL_DeleteDecal_f()
 			p->die = cl.leveltime;
 	defDecal_t	*p;
 	for (p = curdecal; p < &deferred_decals[MAX_DECALS]; p++)
-		Memcpy(p, p+1, sizeof(defDecal_t));
-	Memset(&deferred_decals[MAX_DECALS], 0, sizeof(defDecal_t));
+		memcpy(p, p+1, sizeof(defDecal_t));
+	memset(&deferred_decals[MAX_DECALS], 0, sizeof(defDecal_t));
 	num_deferred_decals--;
 
 	curdecal = NULL;
@@ -76719,7 +75124,7 @@ void CL_CopyDecal_f ()
 	if (!curdecal)
 		return;
 
-	Memcpy(&decal_clipboard, curdecal, sizeof(defDecal_t));
+	memcpy(&decal_clipboard, curdecal, sizeof(defDecal_t));
 	if (!silent_decal)
 		Com_Printf("Decal copied to clipboard.\n");
 }
@@ -77324,7 +75729,7 @@ void CL_SelectBrush_f ()
 	trace_t trace = CL_PMTraceWorld (r_origin, vec3_origin, vec3_origin, end, MASK_SOLID);
 	if(/*trace.surface->name &&*/ trace.surface->name[0])
 	{
-		if ((int)trace.ent>1)
+		if (trace.ent)
 		{
 			if (cl.model_draw[trace.ent->s.modelindex]->type==mod_brush)
 			{
@@ -77499,7 +75904,7 @@ void CL_Paste_f ()
 			Com_Printf("No labeled brush model selected.\n");
 			return;
 		}
-		Memcpy(link_clipboard.label, bmdl_list[i].label, sizeof(curlink->label));
+		memcpy(link_clipboard.label, bmdl_list[i].label, sizeof(curlink->label));
 		link_clipboard.index = curbrushnum;
 
 		VectorCopy(link_clipboard.color, temp.color);
@@ -77529,7 +75934,7 @@ void CL_Paste_f ()
 		temp.filtercube_start = link_clipboard.filtercube_start;
 		temp.filtercube_end = link_clipboard.filtercube_end;
 		temp.ownerkey = link_clipboard.framerate;
-		Memcpy(temp.label, link_clipboard.label, MAX_QPATH);
+		memcpy(temp.label, link_clipboard.label, MAX_QPATH);
 
 		SpawnLinkedLight(&temp);
 		curlink = &lmdl_list[lightmodel_counter-1];
@@ -77541,7 +75946,7 @@ void CL_Paste_f ()
 		if(!light_clipboard.radius)	// клипбоард пока пуст
 			return;
 
-		Memcpy(&temp, &light_clipboard, sizeof(shadowlight_t));
+		memcpy(&temp, &light_clipboard, sizeof(shadowlight_t));
 		temp.ownerkey = link_clipboard.framerate;
 
 		if (!Q_strcasecmp(Cmd_Argv(0), "paste2camera"))
@@ -77929,9 +76334,9 @@ sintax:		Com_Printf("^3Usage: delete <all> | <notargeted>\n");
 		}
 
 		for(light=curlink; light<&lmdl_list[lightmodel_counter-1]; light++)
-			Memcpy(light, light+1, sizeof(llink_t));
+			memcpy(light, light+1, sizeof(llink_t));
 
-		Memset(&lmdl_list[lightmodel_counter-1], 0, sizeof(llink_t));
+		memset(&lmdl_list[lightmodel_counter-1], 0, sizeof(llink_t));
 		lightmodel_counter--;
 		if(curlink == &lmdl_list[lightmodel_counter])
 		{
@@ -77972,9 +76377,9 @@ sintax:		Com_Printf("^3Usage: delete <all> | <notargeted>\n");
 		}
 
 		for(light=curlight; light<&shadowlights[numStaticShadowLights-1]; light++)
-			Memcpy(light, light+1, sizeof(shadowlight_t));
+			memcpy(light, light+1, sizeof(shadowlight_t));
 
-		Memset(&shadowlights[numStaticShadowLights-1], 0, sizeof(shadowlight_t));
+		memset(&shadowlights[numStaticShadowLights-1], 0, sizeof(shadowlight_t));
 		numShadowLights--;
 		numStaticShadowLights--;
 		if(curlight == &shadowlights[numStaticShadowLights])
@@ -78001,9 +76406,9 @@ void CL_DeleteEmit_f ()
 	emit_t	*emit;
 
 	for(emit=curemit; emit<&emits[numEmits-1]; emit++)
-		Memcpy(emit, emit+1, sizeof(emit_t));
+		memcpy(emit, emit+1, sizeof(emit_t));
 
-	Memset(&emits[numEmits-1], 0, sizeof(emit_t));
+	memset(&emits[numEmits-1], 0, sizeof(emit_t));
 	numEmits--;
 
 	if(curemit == &emits[numEmits])
@@ -78028,7 +76433,7 @@ void CL_Copy_f ()
 		if(!curlink)
 			return;
 
-		Memcpy(&link_clipboard, curlink, sizeof(llink_t));
+		memcpy(&link_clipboard, curlink, sizeof(llink_t));
 		Com_Printf("Linked light copied to clipboard.\n");
 	}
 	else
@@ -78036,7 +76441,7 @@ void CL_Copy_f ()
 		if(!curlight)
 			return;
 
-		Memcpy(&light_clipboard, curlight, sizeof(shadowlight_t));
+		memcpy(&light_clipboard, curlight, sizeof(shadowlight_t));
 		Com_Printf("Static light copied to clipboard.\n");
 	}
 }
@@ -78050,7 +76455,7 @@ void CL_CopyEmit_f ()
 	if(!curemit)
 		return;
 
-	Memcpy(&emit_clipboard, curemit, sizeof(emit_t));
+	memcpy(&emit_clipboard, curemit, sizeof(emit_t));
 	Com_Printf("Emitter copied to clipboard.\n");
 }
 
@@ -78309,7 +76714,7 @@ void CL_LabelEmit_f ()
 		return;
 	}
 
-	Memcpy(curemit->label, bmdl_list[i].label, MAX_QPATH);
+	memcpy(curemit->label, bmdl_list[i].label, MAX_QPATH);
 	curemit->index = curbrushnum;
 
 	VectorSubtract(curemit->origin, currententity->origin, curemit->origin);
@@ -78376,7 +76781,7 @@ void CL_LabelModel_f ()
 		return;
 	}
 
-	Memcpy(curmodel->label, bmdl_list[i].label, MAX_QPATH);
+	memcpy(curmodel->label, bmdl_list[i].label, MAX_QPATH);
 	curmodel->index = curbrushnum;
 
 	VectorSubtract(curmodel->origin, currententity->origin, curmodel->origin);
@@ -78405,7 +76810,7 @@ void CL_PasteEmit_f ()
 		return;
 	}
 
-	Memcpy(l, &emit_clipboard, sizeof(emit_t));
+	memcpy(l, &emit_clipboard, sizeof(emit_t));
 
 	if (!Q_strcasecmp(Cmd_Argv(0), "paste2cameraemit"))
 	{
@@ -78436,7 +76841,7 @@ void CL_PasteCurEmit_f ()
 		return;
 
 	VectorCopy(curemit->origin, bak);
-	Memcpy(curemit, &emit_clipboard, sizeof(emit_t));
+	memcpy(curemit, &emit_clipboard, sizeof(emit_t));
 	VectorCopy(bak, curemit->origin);
 	Cl_UpdateEditorCvars(ED_EMIT | ED_MODIFIED);
 }
@@ -78869,7 +77274,7 @@ void CL_CreateEmit_f()
 	l->alphavel = 0;							// no lifetime override
 	l->gravity = 0;								// no gravity override
 	VectorClear(l->startcolor);					// no color override
-	Memset(l->label, 0, MAX_QPATH);
+	memset(l->label, 0, MAX_QPATH);
 	l->area = CM_LeafArea (CM_PointLeafnum (l->origin));
 	if (!l->area)
 		Com_Printf("^3Emitter is out of BSP!\n");
@@ -79591,7 +77996,7 @@ void CL_CreateFlareLights_f()
 		if (l->surf->ent)
 			continue;
 
-		Memset(&light, 0, sizeof(shadowlight_t));
+		memset(&light, 0, sizeof(shadowlight_t));
 		float	r,g,b,t;
 		r = l->surf->texinfo->image->color[0];
 		g = l->surf->texinfo->image->color[1];
@@ -80825,18 +79230,18 @@ void CL_LightStyle_f ()
 
 	CheckLightStyle(Cmd_Argv(2));
 
-	Memset(lightstyles[num], 0, MAX_QPATH);
-	Memcpy(lightstyles[num], Cmd_Argv(2), MAX_QPATH-1);
+	memset(lightstyles[num], 0, MAX_QPATH);
+	memcpy(lightstyles[num], Cmd_Argv(2), MAX_QPATH-1);
 
 	if (net_compatibility->value)
 	{
-		Memset(cl.configstrings[num+CS_LIGHTS_Q2], 0, MAX_QPATH);
-		Memcpy(cl.configstrings[num+CS_LIGHTS_Q2], Cmd_Argv(2), MAX_QPATH-1);
+		memset(cl.configstrings[num+CS_LIGHTS_Q2], 0, MAX_QPATH);
+		memcpy(cl.configstrings[num+CS_LIGHTS_Q2], Cmd_Argv(2), MAX_QPATH-1);
 	}
 	else
 	{
-		Memset(cl.configstrings[num+CS_LIGHTS_BERS], 0, MAX_QPATH);
-		Memcpy(cl.configstrings[num+CS_LIGHTS_BERS], Cmd_Argv(2), MAX_QPATH-1);
+		memset(cl.configstrings[num+CS_LIGHTS_BERS], 0, MAX_QPATH);
+		memcpy(cl.configstrings[num+CS_LIGHTS_BERS], Cmd_Argv(2), MAX_QPATH-1);
 	}
 	CL_SetLightstyle(num);
 	Com_Printf("LightStyle %i overrided with \"%s\"\n", num, lightstyles[num]);
@@ -80892,7 +79297,7 @@ void CL_Targetname_f ()
 			return;
 		}
 
-		Memcpy(curlight->targetname, Cmd_Argv(1), sizeof(curlight->targetname));
+		memcpy(curlight->targetname, Cmd_Argv(1), sizeof(curlight->targetname));
 		Com_Printf("Targetname changed.\n");
 		Cl_UpdateEditorCvars(ED_LIGHT | ED_MODIFIED);
 	}
@@ -80915,7 +79320,7 @@ void CL_NoiseModel_f ()
 		return;
 	}
 
-	Memcpy(curmodel->sound, Cmd_Argv(1), MAX_QPATH);
+	memcpy(curmodel->sound, Cmd_Argv(1), MAX_QPATH);
 	if (curmodel->sound[0])
 	{
 		if (!strstr (curmodel->sound, ".wav"))
@@ -81249,48 +79654,17 @@ void CL_PrevModel_f ()
 }
 
 
-static inline void MS_memcpy( void *dest, const void *src, size_t count )
-{
-	memcpy(dest, src, count);
-}
-
-static inline void MS_memset( void *dest, const int b, size_t count )
-{
-	memset(dest, b, count);
-}
-
-
-#ifdef ENABLE_ASM
-void M_SelectMath(int it, int size, bool def, bool silent)
-#else
 void M_SelectMath(int it, bool def, bool silent)
-#endif
 {
 	int		i, start, min;
 	int		result[4];		// до 4 версий
 	float	a;
-#ifdef ENABLE_ASM
-	void	*buf0;
-	void	*buf1;
-#endif
 
 	if (def)
 	{	// ставим заведомо работающие версии подпрограмм (на любых CPU)
 		Sqrt = sqrtf;
-#ifdef ENABLE_ASM
-		Memcpy = MS_memcpy;
-		Memset = MS_memset;
-#endif
 		return;
 	}
-
-#ifdef ENABLE_ASM
-	if (size>0)
-	{
-		buf0 = malloc(size);
-		buf1 = malloc(size);
-	}
-#endif
 
 	void (*Printf)(char *fmt, ...);
 	if (silent)
@@ -81324,138 +79698,11 @@ void M_SelectMath(int it, bool def, bool silent)
 		Printf("    Selected fastsqrt\n");
 		Sqrt = fastsqrt;
 	}
-
-// memcpy
-#ifdef ENABLE_ASM
-	start = Sys_Milliseconds ();
-	for (i=0; i<it; i++)
-		MS_memcpy(buf0, buf1, size);
-	result[0] = Sys_Milliseconds()-start;
-	Printf("memcpy %i ms\n", result[0]);
-
-	start = Sys_Milliseconds ();
-	for (i=0; i<it; i++)
-		Memcpy(buf0, buf1, size);
-	result[1] = Sys_Milliseconds()-start;
-	Printf("Com_Memcpy %i ms\n", result[1]);
-
-#ifdef _MSC_VER
-	if (cpu_mmx)
-	{
-		start = Sys_Milliseconds ();
-		for (i=0; i<it; i++)
-			MMX_Memcpy(buf0, buf1, size);
-		result[2] = Sys_Milliseconds()-start;
-		Printf("MMX_Memcpy %i ms\n", result[2]);
-	}
-	else
-#endif
-	{
-		result[2] = 0x7fffffff;
-		Printf("MMX_Memcpy ignored\n");
-	}
-
-#ifdef _MSC_VER
-	if (cpu_3dnow)
-	{
-		start = Sys_Milliseconds ();
-		for (i=0; i<it; i++)
-			AMD_Memcpy(buf0, buf1, size);
-		result[3] = Sys_Milliseconds()-start;
-		Printf("AMD_Memcpy %i ms\n", result[3]);
-	}
-	else
-#endif
-	{
-		result[3] = 0x7fffffff;
-		Printf("AMD_Memcpy ignored\n");
-	}
-
-	min = min(result[0], min(result[1], min(result[2], result[3])));
-	if (min == result[0])
-	{
-		Printf("    Selected memcpy\n");
-		Memcpy = MS_memcpy;
-	}
-	else if (min == result[1])
-	{
-		Printf("    Selected Com_Memcpy\n");
-		Memcpy = Com_Memcpy;
-	}
-	else if (min == result[2])
-	{
-		Printf("    Selected MMX_Memcpy\n");
-		Memcpy = MMX_Memcpy;
-	}
-	else
-	{
-		Printf("    Selected AMD_Memcpy\n");
-		Memcpy = AMD_Memcpy;
-	}
-
-// memset
-	start = Sys_Milliseconds ();
-	for (i=0; i<it; i++)
-		MS_memset(buf0, 0, size);
-	result[0] = Sys_Milliseconds()-start;
-	Printf("memset %i ms\n", result[0]);
-
-	start = Sys_Milliseconds ();
-	for (i=0; i<it; i++)
-		Com_Memset(buf0, 0, size);
-	result[1] = Sys_Milliseconds()-start;
-	Printf("Com_Memset %i ms\n", result[1]);
-
-#ifdef _MSC_VER
-	if (cpu_mmx)
-	{
-		start = Sys_Milliseconds ();
-		for (i=0; i<it; i++)
-			MMX_Memset(buf0, 0, size);
-		result[2] = Sys_Milliseconds()-start;
-		Printf("MMX_Memset %i ms\n", result[2]);
-	}
-	else
-#endif
-	{
-		result[2] = 0x7fffffff;
-		Printf("MMX_Memset ignored\n");
-	}
-
-	min = min(result[0], min(result[1], result[2]));
-	if (min == result[0])
-	{
-		Printf("    Selected memset\n");
-		Memset = MS_memset;
-	}
-	else if (min == result[1])
-	{
-		Printf("    Selected Com_Memset\n");
-		Memset = Com_Memset;
-	}
-	else
-	{
-		Printf("    Selected MMX_Memset\n");
-		Memset = MMX_Memset;
-	}
-#endif
-
-#ifdef ENABLE_ASM
-	if (size>0)
-	{
-		free (buf0);
-		free (buf1);
-	}
-#endif
 }
 
 void Com_MathTest_f ()
 {
-#ifdef ENABLE_ASM
-	M_SelectMath(128, 1024*1024, false, false);		// benchmark and set progs
-#else
-	M_SelectMath(128, false, false);
-#endif
+	M_SelectMath(128, false, false);		// benchmark and set progs
 }
 
 
@@ -81615,9 +79862,9 @@ void CL_DeleteFog_f()
 	fog_t	*fog;
 
 	for(fog=curfog; fog<&fog_infos[numFogs-1]; fog++)
-		Memcpy(fog, fog+1, sizeof(fog_t));
+		memcpy(fog, fog+1, sizeof(fog_t));
 
-	Memset(&fog_infos[numFogs-1], 0, sizeof(fog_t));
+	memset(&fog_infos[numFogs-1], 0, sizeof(fog_t));
 	numFogs--;
 
 	if(curfog == &fog_infos[numFogs])
@@ -81968,7 +80215,7 @@ void CL_CopyModel_f ()
 	if(!curmodel)
 		return;
 
-	Memcpy(&model_clipboard, curmodel, sizeof(alink_t));
+	memcpy(&model_clipboard, curmodel, sizeof(alink_t));
 	if (!silent_model)
 		Com_Printf("Model copied to clipboard.\n");
 	Cl_UpdateEditorCvars(ED_MODEL | ED_MODIFIED);
@@ -81987,9 +80234,9 @@ void CL_DeleteModel_f()
 		if (&amdl_list[am] == curmodel)
 		{
 			if (aliasmodel_counter-am-1)
-				Memcpy(curmodel, &amdl_list[am+1], sizeof(alink_t)*(aliasmodel_counter-am-1));
+				memcpy(curmodel, &amdl_list[am+1], sizeof(alink_t)*(aliasmodel_counter-am-1));
 			aliasmodel_counter--;
-			Memset(&amdl_list[aliasmodel_counter], 0, sizeof(alink_t));
+			memset(&amdl_list[aliasmodel_counter], 0, sizeof(alink_t));
 			if (!silent_model)
 				Com_Printf("Model deleted.\n");
 			if (aliasmodel_counter)
@@ -82030,7 +80277,7 @@ void CL_PasteModel_f ()
 		return;
 	}
 
-	Memcpy(m, &model_clipboard, sizeof(alink_t));
+	memcpy(m, &model_clipboard, sizeof(alink_t));
 
 	curmodel = m;
 	if (!Q_strcasecmp(Cmd_Argv(0), "paste2cameramodel"))
@@ -82144,7 +80391,7 @@ void CL_CreateModel_f()
 
 	VectorCopy(cl.refdef.vieworg, m->origin);
 	VectorCopy(cl.refdef.viewangles, m->angles);
-	Memcpy(m->model, Cmd_Argv(1), MAX_QPATH);
+	memcpy(m->model, Cmd_Argv(1), MAX_QPATH);
 	m->label[0] = ' ';	// чисто "пустой" линк, чтоб сервер игнорировал модель
 	m->label[1] = 0;
 	m->mdl = mdl;
@@ -82186,7 +80433,7 @@ void CL_ChangeModel_f()
 	if (!mdl)
 		return;
 
-	Memcpy(curmodel->model, Cmd_Argv(1), MAX_QPATH);
+	memcpy(curmodel->model, Cmd_Argv(1), MAX_QPATH);
 	curmodel->mdl = mdl;
 	curmodel->frame = curmodel->skinnum = curmesh = curtri = 0;
 
@@ -82205,8 +80452,8 @@ void CL_InitLocal ()
 
 	CL_InitInput ();
 
-	for( i=0 ; i<MAX_LOCAL_SERVERS ; i++ )
-		Cvar_Get( va( "adr%i", i ), "", CVAR_ARCHIVE );
+	for( i=0 ; i<NUM_ADDRESSBOOK_ENTRIES ; i++ )
+		adr[i] = Cvar_Get( va( "adr%i", i ), "", CVAR_ARCHIVE );
 
 //
 // register our variables
@@ -82219,11 +80466,18 @@ void CL_InitLocal ()
 	cl_noskins->help = "assign for all players skin 'players/male/grunt'.";
 ///	cl_autoskins = Cvar_Get ("cl_autoskins", "0", 0);
 	cl_predict = Cvar_Get ("cl_predict", "1", 0);
-	cl_sleep = Cvar_Get ("cl_sleep", "0", CVAR_ARCHIVE);
-	cl_sleep->help = "can decrease CPU loading when cl_maxfps limits render speed.";
+	cl_sleep = Cvar_Get ("cl_sleep", "1", CVAR_ARCHIVE);
+	cl_sleep->help = "can decrease CPU load when _maxfps cvars limit render speed.";
 	cl_forcemymodel = Cvar_Get ("cl_forcemymodel", "0", CVAR_ARCHIVE);
 	cl_forcemymodel->help = "assign for all players your skin. 1 - in game, 2 - in demos.";
-	cl_maxfps = Cvar_Get ("cl_maxfps", "60", CVAR_ARCHIVE);
+	cl_maxfps = Cvar_Get ("cl_maxfps", "90", CVAR_ARCHIVE);
+	cl_maxfps->help = "maximum frame-rate when running in old synchronous mode.";
+	cl_async = Cvar_Get ("cl_async", "1", CVAR_ARCHIVE);
+	cl_async->help = "enable asynchronous mode, network frame-rate is independent from render frame-rate.";
+	net_maxfps = Cvar_Get ("net_maxfps", "60", CVAR_ARCHIVE);
+	net_maxfps->help = "maximum network frame-rate when running in asynchronous mode.";
+	r_maxfps = Cvar_Get ("r_maxfps", "125", CVAR_ARCHIVE);
+	r_maxfps->help = "maximum rendering frame-rate when running in asynchronous mode.";
 
 	p_splash =  Cvar_Get ("p_splash", "1", CVAR_ARCHIVE);		p_splash->value = ClampCvar(0, 1, p_splash->value);
 	p_blood =  Cvar_Get ("p_blood", "1", CVAR_ARCHIVE);			p_blood->value = ClampCvar(0, 1, p_blood->value);
@@ -82321,10 +80575,12 @@ void CL_InitLocal ()
 	if(railtrailradius->value<0 || railtrailradius->value>127)
 		Cvar_SetValue("rail_radius", 3);
 
-	fov = Cvar_Get ("fov", "91", CVAR_USERINFO|CVAR_ARCHIVE);
-	fov->help = "Field Of Vision (degrees). '90' will block '+zoom'.";
+	fov = Cvar_Get ("fov", "90", CVAR_USERINFO|CVAR_ARCHIVE);
+	fov->help = "Field Of Vision (degrees)";
 	zoomfov = Cvar_Get ("zoomfov", "22.5", CVAR_ARCHIVE);
 	zoomfov->help = "lower FOV limit for '+zoom'";
+	zoomspeed = Cvar_Get ("zoomspeed", "1", CVAR_ARCHIVE);
+	zoomspeed->help = "zooming-in speed for '+zoom'";
 	gender = Cvar_Get ("gender", "male", CVAR_USERINFO | /*CVAR_ARCHIVE*/CVAR_NOSET);
 ///	gender_auto = Cvar_Get ("gender_auto", "1", CVAR_ARCHIVE);
 ///	gender->modified = false; // clear this so we know when user sets it manually
@@ -82350,7 +80606,7 @@ CL_FixUpGender();	// Berserker: на старте вычислим gender и м�
 	Cmd_AddCommand ("userinfo", CL_Userinfo_f);
 	Cmd_AddCommand ("snd_restart", CL_Snd_Restart_f);
 	Cmd_AddCommand ("changing", CL_Changing_f);
-///	Cmd_AddCommand ("disconnect", CL_Disconnect_f);
+	Cmd_AddCommand ("disconnect", CL_Disconnect_f);
 	Cmd_AddCommand ("record", CL_Record_f);
 	Cmd_AddCommand ("stop", CL_Stop_f);
 	Cmd_AddCommand ("quit", CL_Quit_f);
@@ -83112,7 +81368,7 @@ sfx_t *S_FindName (char *name, bool create, unsigned lockTime)
 	}
 
 	sfx = &known_sfx[i];
-	Memset (sfx, 0, sizeof(*sfx));
+	memset (sfx, 0, sizeof(*sfx));
 	strcpy (sfx->name, name);
 	sfx->hash = hash;
 	sfx->lockMSecs = lockTime;
@@ -83193,7 +81449,7 @@ wavinfo_t GetWavinfo (char *name, byte *wav, int wavlength)
 	int     format;
 	int		samples;
 
-	Memset (&info, 0, sizeof(info));
+	memset (&info, 0, sizeof(info));
 
 	if (!wav)
 		return info;
@@ -83452,7 +81708,7 @@ sfx_t *S_AliasName (char *aliasname, char *truename)
 	}
 
 	sfx = &known_sfx[i];
-	Memset (sfx, 0, sizeof(*sfx));
+	memset (sfx, 0, sizeof(*sfx));
 	strcpy (sfx->name, aliasname);
 	sfx->hash = Com_HashKey(sfx->name);
 	sfx->lockMSecs = 0;
@@ -83708,7 +81964,7 @@ void S_Shutdown()
 			Z_Free (sfx->cache);
 		if (sfx->truename)
 			Z_Free (sfx->truename); // memleak fix from echon (R1CH and Echon, fix it in your S_Shutdown())
-		Memset (sfx, 0, sizeof(*sfx));
+		memset (sfx, 0, sizeof(*sfx));
 	}
 
 	num_sfx = 0;
@@ -83744,14 +82000,18 @@ void SNDDMA_Submit()
 
 void S_ClearBuffer ()
 {
-	if (!sound_started)
-		return;
+	int		clear;
 
 	s_rawend = 0;
 
+	if (dma.samplebits == 8)
+		clear = 0x80;
+	else
+		clear = 0;
+
 	SNDDMA_BeginPainting ();
 	if (dma.buffer)
-		Memset(dma.buffer, 0, dma.samples * 2);
+		memset(dma.buffer, clear, dma.samples * dma.samplebits/8);
 	SNDDMA_Submit ();
 }
 
@@ -83764,7 +82024,7 @@ void S_StopAllSounds()
 		return;
 
 	// clear all the playsounds
-	Memset(s_playsounds, 0, sizeof(s_playsounds));
+	memset(s_playsounds, 0, sizeof(s_playsounds));
 	s_freeplays.next = s_freeplays.prev = &s_freeplays;
 	s_pendingplays.next = s_pendingplays.prev = &s_pendingplays;
 
@@ -83777,7 +82037,7 @@ void S_StopAllSounds()
 	}
 
 	// clear all the channels
-	Memset(channels, 0, sizeof(channels));
+	memset(channels, 0, sizeof(channels));
 
 	// stop the background music
 	S_StopBackgroundTrack();
@@ -83833,10 +82093,9 @@ void S_SoundInfo_f()
 	Com_Printf("%5d stereo\n", dma.channels - 1);
 	Com_Printf("%5d samples\n", dma.samples);
 	Com_Printf("%5d samplepos\n", dma.samplepos);
-	Com_Printf("%5d samplebits\n", 16);
-	Com_Printf("%5d submission_chunk\n", dma.submission_chunk);
+	Com_Printf("%5d samplebits\n", dma.samplebits);
 	Com_Printf("%5d speed\n", dma.speed);
-	Com_Printf("0x%x dma buffer\n", dma.buffer);
+	Com_Printf("%p dma buffer\n", dma.buffer);
 	Com_Printf("SDL audio driver: %s\n", SDL_GetCurrentAudioDriver());
 
 	if ( s_playingFile[0] )
@@ -83868,14 +82127,14 @@ void SDL_SoundCallback(void* userdata, Uint8* stream, int len)
 	int wrapped = pos + len - size;
 	if (wrapped < 0)
 	{
-		Memcpy(stream, dma.buffer + pos, len);
+		memcpy(stream, dma.buffer + pos, len);
 		dma.samplepos += len >> 1;
 	}
 	else
 	{
 		int remaining = size - pos;
-		Memcpy(stream, dma.buffer + pos, remaining);
-		Memcpy(stream + remaining, dma.buffer, wrapped);
+		memcpy(stream, dma.buffer + pos, remaining);
+		memcpy(stream + remaining, dma.buffer, wrapped);
 		dma.samplepos = wrapped >> 1;
 	}
 }
@@ -83891,54 +82150,62 @@ Returns false if nothing is found.
 */
 int SNDDMA_Init()
 {
+	unsigned	  buffersize;
 	SDL_AudioSpec desired, obtained;
 
 	if (SDL_InitSubSystem(SDL_INIT_AUDIO) < 0)
 	{
-		Com_Printf("SDL_InitSubSystem(SDL_INIT_AUDIO) ^1failed^7: %s\n", SDL_GetError());
+		Com_Printf("^1SDL_InitSubSystem(SDL_INIT_AUDIO) failed: %s\n", SDL_GetError());
 		return 0;
 	}
 
 	memset(&desired, 0, sizeof(desired));
 
-	if (s_khz->value == 44)
+	if (s_khz->value == 48)
+		desired.freq = 48000;
+	else if (s_khz->value == 44)
 		desired.freq = 44100;
 	else if (s_khz->value == 22)
 		desired.freq = 22050;
 	else
 		desired.freq = 11025;
 
+	buffersize = (unsigned)ceil((double)desired.freq / 25.0); // 2048 bytes on 24kHz to 48kHz
+
 	desired.channels = 2;
 	desired.format = AUDIO_S16LSB;
-	desired.samples = 512;
+	desired.samples = CeilPowerOfTwo(buffersize);
 	desired.callback = SDL_SoundCallback;
 
-	if (SDL_OpenAudio(&desired, &obtained) == -1)
+	if (SDL_OpenAudio(&desired, &obtained) < 0)
 	{
-		Com_Printf("SDL_OpenAudio ^1failed^7: %s\n", SDL_GetError());
+		Com_Printf("^1SDL_OpenAudio failed: %s\n", SDL_GetError());
 		SDL_QuitSubSystem(SDL_INIT_AUDIO);
 		return 0;
 	}
 
-	if (obtained.format != AUDIO_S16LSB)
+	if (obtained.format != AUDIO_S16LSB && obtained.format != AUDIO_U8)
 	{
-		Com_Printf("SDL audio format 0x%x ^1unsupported^7.\n", obtained.format);
+		Com_Printf("^3SDL audio format 0x%x ^1unsupported^3.\n", obtained.format);
 		SNDDMA_Shutdown();
 		return 0;
 	}
 
 	if (obtained.channels > 2)
 	{
-		Com_Printf("SDL audio channels %d ^1unsupported^7.\n", obtained.channels);
+		Com_Printf("^3SDL audio channels %d ^1unsupported^3.\n", obtained.channels);
 		SNDDMA_Shutdown();
 		return 0;
 	}
 
+	if (obtained.format == AUDIO_S16LSB)
+		dma.samplebits = 16;
+	else
+		dma.samplebits = 8;
 	dma.channels = obtained.channels;
-	dma.samples = 0x8000 * obtained.channels;
+	dma.samples = 0x2000 * obtained.channels;
 	dma.speed = obtained.freq;
-	dma.buffer = (byte *)Z_Malloc(dma.samples * 2, false);
-	dma.submission_chunk = 1;
+	dma.buffer = (byte *)Z_Malloc(dma.samples * dma.samplebits/8, false);
 
 	if (!dma.buffer)
 	{
@@ -83969,7 +82236,7 @@ void S_Init ()
 	else
 	{
 		s_volume = Cvar_Get ("s_volume", "0.7", CVAR_ARCHIVE);
-		s_khz = Cvar_Get ("s_khz", "22", CVAR_ARCHIVE);
+		s_khz = Cvar_Get ("s_khz", "48", CVAR_ARCHIVE);
 		s_loadas8bit = Cvar_Get ("s_loadas8bit", "0", CVAR_ARCHIVE);
 		s_mixahead = Cvar_Get ("s_mixahead", "0.2", CVAR_ARCHIVE);
 		s_mute_losefocus = Cvar_Get ("s_mute_losefocus", "1", CVAR_ARCHIVE);
@@ -84064,7 +82331,7 @@ void M_DrawCursor( int x, int y )
 	char		scratch[MAX_QPATH];
 	int			old, old2;
 
-	Memset(&entity, 0, sizeof(entity));
+	memset(&entity, 0, sizeof(entity));
 
 	Com_sprintf (scratch, sizeof(scratch), "models/hud/p_quad.md2");
 	entity.model = R_RegisterModel(scratch, 1, false);
@@ -84075,9 +82342,9 @@ void M_DrawCursor( int x, int y )
 		entity.bump = R_RegisterBump(scratch, entity.skin, entity.model);
 		entity.light = R_RegisterLight(scratch);
 
-		Memset(&refdef, 0, sizeof(refdef));
+		memset(&refdef, 0, sizeof(refdef));
 		currentshadowlight = &m_light;
-		Memset(currentshadowlight, 0, sizeof(shadowlight_t));
+		memset(currentshadowlight, 0, sizeof(shadowlight_t));
 
 		int x0 = x-11;
 		int y0 = y-3;
@@ -84218,7 +82485,11 @@ void M_PopMenu ()
 		m_keyfunc = m_layers[m_menudepth].key;
 	}
 	else
+	{
 		M_ForceMenuOff ();
+		if (cls.state == ca_disconnected)
+			cls.key_dest = key_console;
+	}
 }
 
 
@@ -84231,7 +82502,6 @@ void StartGame()
 	Cvar_SetValue( "coop", 0 );
 
 	Cbuf_AddText ("loading ; killserver ; wait ; newgame\n");
-	cls.key_dest = key_game;
 }
 
 
@@ -84540,9 +82810,9 @@ void Create_Demosstrings (int mask)
 	bool			exit = false;
 
 	// init
-	Memset(m_demos, 0, sizeof(char)*MAX_DEMOS*(MAX_QPATH+1));
-	Memset(m_demosvalid, 0, sizeof(bool)*MAX_DEMOS);
-	Memset(m_demos_short, 0, sizeof(char)*MAX_DEMOS*(MAX_DEMO_NAMELEN+1));
+	memset(m_demos, 0, sizeof(char)*MAX_DEMOS*(MAX_QPATH+1));
+	memset(m_demosvalid, 0, sizeof(bool)*MAX_DEMOS);
+	memset(m_demos_short, 0, sizeof(char)*MAX_DEMOS*(MAX_DEMO_NAMELEN+1));
 
 	if (net_compatibility->value)
 	{
@@ -84576,7 +82846,7 @@ void Create_Demosstrings (int mask)
 							{
 								if(!b_stricmp(ZipCache[i].pak_name, pak->filename))
 								{
-									Memcpy(&pf, &ZipCache[i], sizeof(zipfile_t));		// Нашли уже открытый ZIP и загрузили его описатель в pf
+									memcpy(&pf, &ZipCache[i], sizeof(zipfile_t));		// Нашли уже открытый ZIP и загрузили его описатель в pf
 									goto clc;
 								}
 							}
@@ -84593,7 +82863,7 @@ void Create_Demosstrings (int mask)
 					strcpy(&ZipCache[slot].pak_name[0], pak->filename);	// Если не нашли zip в кэше, откроем его...
 					if (!PackFileOpen (&ZipCache[slot]))
 						Com_Error(ERR_FATAL, "Error opening pk2-file: %s", pak->filename);
-					Memcpy(&pf, &ZipCache[slot], sizeof(zipfile_t));
+					memcpy(&pf, &ZipCache[slot], sizeof(zipfile_t));
 					goto clc2;
 clc:				slot = i;
 clc2:				for(i=0; i<pf.gi.number_entry; i++)
@@ -84601,7 +82871,7 @@ clc2:				for(i=0; i<pf.gi.number_entry; i++)
 						if(pf.fi[i].size)
 						{
 							char	nam[256];
-							Memcpy(nam, pf.fi[i].name, 256);
+							memcpy(nam, pf.fi[i].name, 256);
 							if(!Q_strncasecmp(nam, "demos/", 6))
 							{
 								if(!Q_strcasecmp(nam+strlen(nam)-4, str_dm))
@@ -84630,7 +82900,7 @@ clc2:				for(i=0; i<pf.gi.number_entry; i++)
 					for (i=0 ; i<pak->numfiles ; i++)
 					{
 						char	nam[256];
-						Memcpy(nam, pak->files[i].name, 256);
+						memcpy(nam, pak->files[i].name, 256);
 						if(!Q_strncasecmp(nam, "demos/", 6))
 						{
 							if(!Q_strcasecmp(nam+strlen(nam)-4, str_dm))
@@ -86140,9 +84410,11 @@ const char *Default_MenuKey( menuframework_s *m, int key )
 
 	switch ( key )
 	{
+	case K_MOUSE2:
 	case K_ESCAPE:
 		M_PopMenu();
 		return menu_out_sound;
+	case K_MWHEELUP:
 	case K_KP_UPARROW:
 	case K_UPARROW:
 		if ( m )
@@ -86152,6 +84424,9 @@ const char *Default_MenuKey( menuframework_s *m, int key )
 			sound = menu_move_sound;
 		}
 		break;
+	case K_MWHEELDOWN:
+	case K_KP_DOWNARROW:
+	case K_DOWNARROW:
 	case K_TAB:
 		if ( m )
 		{
@@ -86160,15 +84435,7 @@ const char *Default_MenuKey( menuframework_s *m, int key )
 			sound = menu_move_sound;
 		}
 		break;
-	case K_KP_DOWNARROW:
-	case K_DOWNARROW:
-		if ( m )
-		{
-			m->cursor++;
-			Menu_AdjustCursor( m, 1 );
-			sound = menu_move_sound;
-		}
-		break;
+	case K_MOUSE4:
 	case K_KP_LEFTARROW:
 	case K_LEFTARROW:
 		if ( m )
@@ -86177,6 +84444,7 @@ const char *Default_MenuKey( menuframework_s *m, int key )
 			sound = menu_move_sound;
 		}
 		break;
+	case K_MOUSE5:
 	case K_KP_RIGHTARROW:
 	case K_RIGHTARROW:
 		if ( m )
@@ -86187,7 +84455,6 @@ const char *Default_MenuKey( menuframework_s *m, int key )
 		break;
 
 	case K_MOUSE1:
-	case K_MOUSE2:
 	case K_MOUSE3:
 	case K_JOY1:
 	case K_JOY2:
@@ -86948,7 +85215,7 @@ again:		if (i + 2 < length)			/// Berserker: игнорируем пустые �
 		Com_Error( ERR_DROP, "no maps in maps.lst" );
 
 	mapnames = (char **) Z_Malloc( sizeof( char * ) * ( nummaps + 1 ), true );
-///	Memset( mapnames, 0, sizeof( char * ) * ( nummaps + 1 ) );
+///	memset( mapnames, 0, sizeof( char * ) * ( nummaps + 1 ) );
 
 	s = buffer;
 
@@ -87676,7 +85943,7 @@ bool PlayerConfig_MenuInit()
 
 	qsort( s_pmi, s_numplayermodels, sizeof( s_pmi[0] ), pmicmpfnc );
 
-	Memset( s_pmnames, 0, sizeof( s_pmnames ) );
+	memset( s_pmnames, 0, sizeof( s_pmnames ) );
 	for ( i = 0; i < s_numplayermodels; i++ )
 	{
 		s_pmnames[i] = s_pmi[i].displayname;
@@ -87927,7 +86194,7 @@ float CalcFov (float fov_x, float width, float height)
 		Com_Error (ERR_DROP, "Bad fov: %f", fov_x);
 
 // Micro$oft's VS2008 compiler lame!  >:E
-#ifndef _MSC_VER
+#if 1
 	x = width/tan(fov_x/360*M_PI);		/* This caused: fatal error C1001: An internal error has occurred in the compiler. */
 #else
 	float half_fov_deg = fov_x / 2.0;
@@ -88095,7 +86362,12 @@ void UpdateSoundQualityFunc( void *unused )
 {
 	if ( s_options_quality_list.curvalue )
 	{
-		if (s_options_quality_list.curvalue == 2)
+		if (s_options_quality_list.curvalue == 3)
+		{
+			Cvar_SetValue("s_khz", 48);
+			s_options_quality_list.generic.statusbar = "48000 Hz, 16 bit";
+		}
+		else if (s_options_quality_list.curvalue == 2)
 		{
 			Cvar_SetValue( "s_khz", 44 );
 			s_options_quality_list.generic.statusbar = "44100 Hz, 16 bit";
@@ -88129,7 +86401,13 @@ void UpdateSoundQualityFunc( void *unused )
 
 void MouseSpeedFunc( void *unused )
 {
-	Cvar_SetValue( "sensitivity", s_options_sensitivity_slider.curvalue / 5.0F/*2.0F*/ );
+	Cvar_SetValue( "sensitivity", s_options_sensitivity_slider.curvalue / 10.0F/*2.0F*/ );
+}
+
+
+void ZoomSpeedFunc( void *unused )
+{
+	Cvar_SetValue( "zoomspeed", s_options_zoomspeed_slider.curvalue / 10.0F );
 }
 
 
@@ -88502,7 +86780,7 @@ void Keys_MenuInit()
 	Menu_AddItem( &s_keys_menu, ( void * ) &s_keys_help_computer_action );
 	Menu_AddItem( &s_keys_menu, ( void * ) &s_keys_screenshot_action );
 
-	Menu_SetStatusBar( &s_keys_menu, "enter to change, del/backspace to clear" );
+	Menu_SetStatusBar( &s_keys_menu, "enter/mouse1 to change, del/backspace to clear" );
 	Menu_Center( &s_keys_menu );
 
 	if(r_mode->value != 0)
@@ -88835,13 +87113,14 @@ const char *Keys_MenuKey( int key )
 			Cbuf_InsertText (cmd);
 		}
 
-		Menu_SetStatusBar( &s_keys_menu, "enter to change, del/backspace to clear" );
+		Menu_SetStatusBar( &s_keys_menu, "enter/mouse1 to change, del/backspace to clear" );
 		bind_grab = false;
 		return menu_out_sound;
 	}
 
 	switch ( key )
 	{
+	case K_MOUSE1:
 	case K_KP_ENTER:
 	case K_ENTER:
 		KeyBindingFunc( item );
@@ -88878,6 +87157,7 @@ const char *Keys_MenuKey2( int key )
 
 	switch ( key )
 	{
+	case K_MOUSE1:
 	case K_KP_ENTER:
 	case K_ENTER:
 		Key2BindingFunc( item );
@@ -88897,12 +87177,14 @@ const char *M_Quit_Key (int key)
 {
 	switch (key)
 	{
+	case K_MOUSE2:
 	case K_ESCAPE:
 	case 'n':
 	case 'N':
 		M_PopMenu ();
 		break;
 
+	case K_MOUSE1:
 	case K_ENTER:
 	case 'Y':
 	case 'y':
@@ -88963,27 +87245,33 @@ const char *VID_MenuKey( int key )
 
 	switch ( key )
 	{
+	case K_MOUSE2:
 	case K_ESCAPE:
 		M_PopMenu ();	//CancelChanges
 		return NULL;
+	case K_MWHEELUP:
 	case K_KP_UPARROW:
 	case K_UPARROW:
 		m->cursor--;
 		Menu_AdjustCursor( m, -1 );
 		break;
+	case K_MWHEELDOWN:
 	case K_KP_DOWNARROW:
 	case K_DOWNARROW:
 		m->cursor++;
 		Menu_AdjustCursor( m, 1 );
 		break;
+	case K_MOUSE4:
 	case K_KP_LEFTARROW:
 	case K_LEFTARROW:
 		Menu_SlideItem( m, -1 );
 		break;
+	case K_MOUSE5:
 	case K_KP_RIGHTARROW:
 	case K_RIGHTARROW:
 		Menu_SlideItem( m, 1 );
 		break;
+	case K_MOUSE1:
 	case K_KP_ENTER:
 	case K_ENTER:
 		if ( !Menu_SelectItem( m ) )
@@ -89008,22 +87296,26 @@ const char *M_Main_Key (int key)
 
 	switch (key)
 	{
+	case K_MOUSE2:
 	case K_ESCAPE:
 		M_PopMenu ();
 		break;
 
+	case K_MWHEELDOWN:
 	case K_KP_DOWNARROW:
 	case K_DOWNARROW:
 		if (++m_main_cursor >= MAIN_ITEMS)
 			m_main_cursor = 0;
 		return (char*)sound;
 
+	case K_MWHEELUP:
 	case K_KP_UPARROW:
 	case K_UPARROW:
 		if (--m_main_cursor < 0)
 			m_main_cursor = MAIN_ITEMS - 1;
 		return (char*)sound;
 
+	case K_MOUSE1:
 	case K_KP_ENTER:
 	case K_ENTER:
 		m_entersound = true;
@@ -89077,7 +87369,7 @@ void M_LoadMapNames()
 	num_maps = Create_Mapsstrings(3);
 
 	map_names = (char **) Z_Malloc( sizeof( char * ) * ( num_maps + 1 ), true );
-///	Memset( map_names, 0, sizeof( char * ) * ( num_maps + 1 ) );
+///	memset( map_names, 0, sizeof( char * ) * ( num_maps + 1 ) );
 
 	for ( i = 0; i < num_maps; i++ )
 	{
@@ -89690,7 +87982,7 @@ void Common_Init (int argc, char **argv)
 	}
 
 ///	s = va("%4.2f %s x86 %s", VERSION, __DATE__, BUILDSTRING);
-	s = va("Berserker@Quake2 %s %s x86 (%s)", __DATE__, __TIME__,  BUILDSTRING);
+	s = va("Berserker@Quake2 %s %s %s (%s)", __DATE__, __TIME__, BERS_ARCH_STR, BUILDSTRING);
 	Cvar_Get ("version", s, CVAR_SERVERINFO|CVAR_NOSET);
 
 	if (dedicated->value)
@@ -89880,7 +88172,7 @@ void SV_CheckTimeouts ()
 			cl->state = cs_free;	// can now be reused
 			continue;
 		}
-		if ( (cl->state == cs_connected || cl->state == cs_spawned) && cl->lastmessage < droppoint)
+		if ( (cl->state == cs_connected || cl->state == cs_spawned) && cl->lastmessage < droppoint && cl->netchan.remote_address.type != NA_LOOPBACK)
 		{
 			SV_BroadcastPrintf (PRINT_HIGH, "%s timed out\n", cl->name);
 			SV_DropClient (cl);
@@ -90086,7 +88378,7 @@ called to open a channel to a remote system
 */
 void Netchan_Setup (netsrc_t sock, netchan_t *chan, netadr_t adr, int qport)
 {
-	Memset (chan, 0, sizeof(*chan));
+	memset (chan, 0, sizeof(*chan));
 
 	chan->sock = sock;
 	chan->remote_address = adr;
@@ -90278,7 +88570,7 @@ void SVC_DirectConnect ()
 	}
 
 	newcl = &temp;
-	Memset (newcl, 0, sizeof(client_t));
+	memset (newcl, 0, sizeof(client_t));
 
 	// if there is already a slot for this ip, reuse it
 	for (i=0,cl=svs.clients ; i<maxclients->value ; i++,cl++)
@@ -90656,7 +88948,7 @@ byte	COM_BlockSequenceCRCByte (byte *base, int length, int sequence)
 
 	if (length > 60)
 		length = 60;
-	Memcpy (chkb, base, length);
+	memcpy (chkb, base, length);
 
 	chkb[length] = p[0];
 	chkb[length+1] = p[1];
@@ -90786,7 +89078,7 @@ void SV_New_f ()
 		ent = EDICT_NUM(playernum+1);
 		ent->s.number = playernum+1;
 		sv_client->edict = ent;
-		Memset (&sv_client->lastcmd, 0, sizeof(sv_client->lastcmd));
+		memset (&sv_client->lastcmd, 0, sizeof(sv_client->lastcmd));
 
 		// begin fetching configstrings
 		MSG_WriteByte (&sv_client->netchan.message, svc_stufftext);
@@ -90933,7 +89225,7 @@ void SV_Baselines_f ()
 		return;
 	}
 
-	Memset (&nullstate, 0, sizeof(nullstate));
+	memset (&nullstate, 0, sizeof(nullstate));
 
 	// write a packet full of data
 	while ( sv_client->netchan.message.cursize <  MAX_MSGLEN/2 && start < MAX_EDICTS)
@@ -91219,7 +89511,7 @@ void SV_ExecuteClientMessage (client_t *cl)
 				}
 			}
 
-			Memset (&nullcmd, 0, sizeof(nullcmd));
+			memset (&nullcmd, 0, sizeof(nullcmd));
 			MSG_ReadDeltaUsercmd (&net_message, &nullcmd, &oldest);
 			if (net_message.readcount > net_message.cursize)		// r1ch
 			{
@@ -91357,18 +89649,17 @@ void NET_Sleep(int msec)
 {
     struct timeval timeout;
 	fd_set	fdset;
-	extern cvar_t *dedicated;
-	int i;
+	int i = -1;
 
 	if (!dedicated || !dedicated->value)
 		return; // we're not a server, just run full speed
 
 	FD_ZERO(&fdset);
-	i = 0;
-	if (ip_sockets[NS_SERVER]) {
+	if (ip_sockets[NS_SERVER] >= 0) {
 		FD_SET(ip_sockets[NS_SERVER], &fdset); // network socket
 		i = ip_sockets[NS_SERVER];
 	}
+
 	timeout.tv_sec = msec/1000;
 	timeout.tv_usec = (msec%1000)*1000;
 	select(i+1, &fdset, NULL, NULL, &timeout);
@@ -91527,11 +89818,11 @@ int CM_WriteAreaBits (byte *buffer, int area)
 
 	if (map_noareas->value)
 	{	// for debugging, send everything
-		Memset (buffer, 255, bytes);
+		memset (buffer, 255, bytes);
 	}
 	else
 	{
-		Memset (buffer, 0, bytes);
+		memset (buffer, 0, bytes);
 
 		floodnum = map_areas[area].floodnum;
 		for (i=0 ; i<numareas ; i++)
@@ -91577,7 +89868,7 @@ void SV_FatPVS (vec3_t org)
 	for (i=0 ; i<count ; i++)
 		leafs[i] = CM_LeafCluster(leafs[i]);
 
-	Memcpy (fatpvs, CM_ClusterPVS(leafs[0]), longs<<2);
+	memcpy (fatpvs, CM_ClusterPVS(leafs[0]), longs<<2);
 	// or in all the other leaf bits
 	for (i=1 ; i<count ; i++)
 	{
@@ -91588,7 +89879,7 @@ void SV_FatPVS (vec3_t org)
 			continue;		// already have the cluster we want
 		src = CM_ClusterPVS(leafs[i]);
 		for (j=0 ; j<longs ; j++)
-			((long *)fatpvs)[j] |= ((long *)src)[j];
+			((int *)fatpvs)[j] |= ((int *)src)[j];
 	}
 }
 
@@ -92008,7 +90299,7 @@ void SV_RecordDemoMessage ()
 	if (!svs.demofile)
 		return;
 
-	Memset (&nostate, 0, sizeof(nostate));
+	memset (&nostate, 0, sizeof(nostate));
 	SZ_Init (&buf, buf_data, sizeof(buf_data));
 
 	// write a frame message that doesn't contain a player_state_t
@@ -92320,6 +90611,7 @@ void CL_ConnectionlessPacket ()
 #endif
 		MSG_WriteByte (&cls.netchan.message, clc_stringcmd);
 		MSG_WriteString (&cls.netchan.message, "new");
+		cls.forcePacket = true;
 		cls.state = ca_connected;
 		return;
 	}
@@ -92463,7 +90755,7 @@ void CL_ParseServerData ()
 		prot = PROTOCOL_VERSION;
 
 	// BIG HACK to let demos from release work with the 3.0x patch!!!
-	if (Com_ServerState() && prot == 34)
+	if (Com_ServerState() && prot == OLD_PROTOCOL_VERSION)
 	{
 	}
 	else if (i != prot)
@@ -93067,7 +91359,7 @@ explosion_t *CL_AllocExplosion ()
 	{
 		if (cl_explosions[i].type == ex_free)
 		{
-			Memset (&cl_explosions[i], 0, sizeof (cl_explosions[i]));
+			memset (&cl_explosions[i], 0, sizeof (cl_explosions[i]));
 			return &cl_explosions[i];
 		}
 	}
@@ -93081,7 +91373,7 @@ explosion_t *CL_AllocExplosion ()
 			time = cl_explosions[i].start;
 			index = i;
 		}
-	Memset (&cl_explosions[index], 0, sizeof (cl_explosions[index]));
+	memset (&cl_explosions[index], 0, sizeof (cl_explosions[index]));
 	return &cl_explosions[index];
 }
 
@@ -93338,7 +91630,7 @@ void CL_ParseBaseline ()
 	int				newnum;
 	entity_state_t	nullstate;
 
-	Memset (&nullstate, 0, sizeof(nullstate));
+	memset (&nullstate, 0, sizeof(nullstate));
 
 	newnum = CL_ParseEntityBits (&bits);
 	cent = &cl_entities[newnum];
@@ -95635,6 +93927,13 @@ Send Key_Event calls
 */
 void Sys_SendKeyEvents ()
 {
+	SDL_Event ev;
+
+	while (SDL_PollEvent (&ev))
+	{
+		SDL_EventProc (&ev);
+	}
+
 	// grab frame time
 	sys_frame_time = SDL_GetTicks();	// FIXME: should this be at start?
 }
@@ -95686,9 +93985,9 @@ void CL_AdjustAngles ()
 	float	up, down;
 
 	if (in_speed.state & 1)
-		speed = cls.frametime * cl_anglespeedkey->value;
+		speed = cls.netFrameTime * cl_anglespeedkey->value;
 	else
-		speed = cls.frametime;
+		speed = cls.netFrameTime;
 
 	if (!(in_strafe.state & 1))
 	{
@@ -95720,7 +94019,7 @@ void CL_BaseMove (usercmd_t *cmd)
 {
 	CL_AdjustAngles ();
 
-	Memset (cmd, 0, sizeof(*cmd));
+	memset (cmd, 0, sizeof(*cmd));
 
 	VectorCopy (cl.viewangles, cmd->angles);
 
@@ -95862,15 +94161,10 @@ void Mod_CalcSurfColors()
 void CL_FinishMove (usercmd_t *cmd)
 {
 	int		ms;
-	int		i;
 
 //
 // figure button bits
 //
-	if ( in_flashlight.state & 3 )
-		cmd->buttons |= BUTTON_FLASHLIGHT;
-	in_flashlight.state &= ~2;
-
 	if ( in_attack.state & 3 )
 		cmd->buttons |= BUTTON_ATTACK;
 	in_attack.state &= ~2;
@@ -95879,23 +94173,29 @@ void CL_FinishMove (usercmd_t *cmd)
 		cmd->buttons |= BUTTON_USE;
 	in_use.state &= ~2;
 
+	if ( in_flashlight.state & 3 )
+		cmd->buttons |= BUTTON_FLASHLIGHT;
+	in_flashlight.state &= ~2;
+
 	if (anykeydown && cls.key_dest == key_game)
 		cmd->buttons |= BUTTON_ANY;
 
 	// send milliseconds of time to apply the move
-	ms = cls.frametime * 1000;
+	ms = cls.netFrameTime * 1000;
 	if (ms > 250)
 		ms = 100;		// time was unreasonable
 	cmd->msec = ms;
 
 	CL_ClampPitch ();
-	for (i=0 ; i<3 ; i++)
-		cmd->angles[i] = ANGLE2SHORT(cl.viewangles[i]);
+
+	cmd->angles[0] = ANGLE2SHORT(cl.viewangles[0]);
+	cmd->angles[1] = ANGLE2SHORT(cl.viewangles[1]);
+	cmd->angles[2] = ANGLE2SHORT(cl.viewangles[2]);
 
 	cmd->impulse = in_impulse;
 	in_impulse = 0;
 
-// send the ambient light level at the player's current position
+	// send the ambient light level at the player's current position
 	if (cls.state != ca_active)
 		cmd->lightlevel = 0;
 	else
@@ -95904,8 +94204,6 @@ void CL_FinishMove (usercmd_t *cmd)
 		R_LightForPoint(cl.refdef.vieworg, ambi);
 		float max = max(max(ambi[0],ambi[1]),ambi[2]);
 		cmd->lightlevel = (byte)150 * max;
-///		if(cmd->lightlevel>255)		/// is byte
-///			cmd->lightlevel=255;
 	}
 }
 
@@ -95934,7 +94232,115 @@ usercmd_t CL_CreateCmd ()
 }
 
 
-void CL_SendCmd ()
+void CL_RefreshCmd ()
+{
+	int			ms;
+	usercmd_t	*cmd = &cl.cmds[ cls.netchan.outgoing_sequence & (CMD_BACKUP-1) ];
+
+	// get delta for this sample.
+	frame_msec = sys_frame_time - old_sys_frame_time;
+
+	// bounds checking
+	if (frame_msec < 1)
+		return;
+	if (frame_msec > 200)
+		frame_msec = 200;
+
+	// Get basic movement from keyboard
+	CL_BaseMove (cmd);
+
+	if (ActiveApp)
+		IN_JoyMove (cmd);
+
+	// Update cmd viewangles for CL_PredictMove
+	CL_ClampPitch ();
+
+	cmd->angles[0] = ANGLE2SHORT(cl.viewangles[0]);
+	cmd->angles[1] = ANGLE2SHORT(cl.viewangles[1]);
+	cmd->angles[2] = ANGLE2SHORT(cl.viewangles[2]);
+
+	// Update cmd->msec for CL_PredictMove
+	ms = (int)(cls.netFrameTime * 1000);
+	if (ms > 250)
+		ms = 100;
+
+	cmd->msec = ms;
+
+	// Update counter
+	old_sys_frame_time = sys_frame_time;
+
+
+	//7 = starting attack 1  2  4
+	//5 = during attack   1     4
+	//4 = idle                  4
+
+	// Send packet immediately on important events
+	if (((in_attack.state & 2) || (in_use.state & 2)))
+		cls.forcePacket = true;
+}
+
+
+void CL_RefreshMove ()
+{
+	usercmd_t *cmd = &cl.cmds[ cls.netchan.outgoing_sequence & (CMD_BACKUP-1) ];
+
+	// get delta for this sample.
+	frame_msec = sys_frame_time - old_sys_frame_time;
+
+	// bounds checking
+	if (frame_msec < 1)
+		return;
+	if (frame_msec > 200)
+		frame_msec = 200;
+
+	// Get basic movement from keyboard
+	CL_BaseMove (cmd);
+
+	if (ActiveApp)
+		IN_JoyMove (cmd);
+
+	// Update counter
+	old_sys_frame_time = sys_frame_time;
+}
+
+
+void CL_FinalizeCmd ()
+{
+	usercmd_t *cmd = &cl.cmds[ cls.netchan.outgoing_sequence & (CMD_BACKUP-1) ];
+
+	// Set any button hits that occured since last frame
+	if (in_attack.state & 3)
+		cmd->buttons |= BUTTON_ATTACK;
+	in_attack.state &= ~2;
+
+	if (in_use.state & 3)
+		cmd->buttons |= BUTTON_USE;
+	in_use.state &= ~2;
+
+	if (in_flashlight.state & 3)
+		cmd->buttons |= BUTTON_FLASHLIGHT;
+	in_flashlight.state &= ~2;
+
+	if (anykeydown && cls.key_dest == key_game)
+		cmd->buttons |= BUTTON_ANY;
+
+	cmd->impulse = in_impulse;
+	in_impulse = 0;
+
+	// send the ambient light level at the player's current position
+	if (cls.state != ca_active)
+		cmd->lightlevel = 0;
+	else
+	{
+		vec3_t	ambi;
+		R_LightForPoint(cl.refdef.vieworg, ambi);
+		float max = max(max(ambi[0],ambi[1]),ambi[2]);
+		cmd->lightlevel = (byte)150 * max;
+	}
+}
+
+
+void CL_SendCmd_Async ()
 {
 	sizebuf_t	buf;
 	byte		data[128];
@@ -95943,7 +94349,8 @@ void CL_SendCmd ()
 	usercmd_t	nullcmd;
 	int			checksumIndex;
 
-buf.data = NULL;	// quiet compiler warning
+	// clear buffer
+	memset (&buf, 0, sizeof(buf));
 
 	// build a command even if not connected
 
@@ -95952,7 +94359,7 @@ buf.data = NULL;	// quiet compiler warning
 	cmd = &cl.cmds[i];
 	cl.cmd_time[i] = cls.realtime;	// for netgraph ping calculation
 
-	*cmd = CL_CreateCmd ();
+	CL_FinalizeCmd ();
 
 	cl.cmd = *cmd;
 
@@ -96004,7 +94411,106 @@ buf.data = NULL;	// quiet compiler warning
 	// if the last packet was dropped, it can be recovered
 	i = (cls.netchan.outgoing_sequence-2) & (CMD_BACKUP-1);
 	cmd = &cl.cmds[i];
-	Memset (&nullcmd, 0, sizeof(nullcmd));
+	memset (&nullcmd, 0, sizeof(nullcmd));
+	MSG_WriteDeltaUsercmd (&buf, &nullcmd, cmd);
+	oldcmd = cmd;
+
+	i = (cls.netchan.outgoing_sequence-1) & (CMD_BACKUP-1);
+	cmd = &cl.cmds[i];
+	MSG_WriteDeltaUsercmd (&buf, oldcmd, cmd);
+	oldcmd = cmd;
+
+	i = (cls.netchan.outgoing_sequence) & (CMD_BACKUP-1);
+	cmd = &cl.cmds[i];
+	MSG_WriteDeltaUsercmd (&buf, oldcmd, cmd);
+
+	// calculate a checksum over the move commands
+	buf.data[checksumIndex] = COM_BlockSequenceCRCByte(
+		buf.data + checksumIndex + 1, buf.cursize - checksumIndex - 1,
+		cls.netchan.outgoing_sequence);
+
+	//
+	// deliver the message
+	//
+	Netchan_Transmit (&cls.netchan, buf.cursize, buf.data);
+
+	// Init the current cmd buffer and clear it
+	cmd = &cl.cmds[ cls.netchan.outgoing_sequence & (CMD_BACKUP-1) ];
+	memset(cmd, 0, sizeof(*cmd));
+}
+
+
+void CL_SendCmd ()
+{
+	sizebuf_t	buf;
+	byte		data[128];
+	int			i;
+	usercmd_t	*cmd, *oldcmd;
+	usercmd_t	nullcmd;
+	int			checksumIndex;
+
+	// clear buffer
+	memset (&buf, 0, sizeof(buf));
+
+	// build a command even if not connected
+
+	// save this command off for prediction
+	i = cls.netchan.outgoing_sequence & (CMD_BACKUP-1);
+	cmd = &cl.cmds[i];
+	cl.cmd_time[i] = cls.realtime;	// for netgraph ping calculation
+
+	*cmd = CL_CreateCmd ();
+
+	cl.cmd = *cmd;
+
+	if (cls.state == ca_disconnected || cls.state == ca_connecting)
+		return;
+
+	if ( cls.state == ca_connected)
+	{
+		if (cls.netchan.message.cursize	|| curtime - cls.netchan.last_sent > 1000 )
+			Netchan_Transmit (&cls.netchan, 0, buf.data);
+		return;
+	}
+
+	// send a userinfo update if needed
+	if (userinfo_modified)
+	{
+		CL_FixUpGender();
+		userinfo_modified = false;
+		MSG_WriteByte (&cls.netchan.message, clc_userinfo);
+		/// Шлём полную строку для совместимости
+		MSG_WriteString (&cls.netchan.message, Cvar_Userinfo(net_compatibility->value ? true : false) );
+		/// или только изменения (Berserker: оптимизация сетевого протокола)
+	}
+
+	SZ_Init (&buf, data, sizeof(data));
+
+	if (cmd->buttons && cl.cinematictime > 0 && !cl.attractloop && cls.realtime - cl.cinematictime > 1000)
+	{	// skip the rest of the cinematic
+		SCR_StopCinematic ();		/// Berserker: НЕ УБИРАТЬ! Иначе будут глюки с cinema!!!
+		SCR_FinishCinematic ();
+	}
+
+	// begin a client move command
+	MSG_WriteByte (&buf, clc_move);
+
+	// save the position for a checksum byte
+	checksumIndex = buf.cursize;
+	MSG_WriteByte (&buf, 0);
+
+	// let the server know what the last frame we
+	// got was, so the next message can be delta compressed
+	if (cl_nodelta->value || !cl.frame.valid || cls.demowaiting)
+		MSG_WriteLong (&buf, -1);	// no compression
+	else
+		MSG_WriteLong (&buf, cl.frame.serverframe);
+
+	// send this and the previous cmds in the message, so
+	// if the last packet was dropped, it can be recovered
+	i = (cls.netchan.outgoing_sequence-2) & (CMD_BACKUP-1);
+	cmd = &cl.cmds[i];
+	memset (&nullcmd, 0, sizeof(nullcmd));
 	MSG_WriteDeltaUsercmd (&buf, &nullcmd, cmd);
 	oldcmd = cmd;
 
@@ -96226,53 +94732,6 @@ int		CL_PMpointcontents (vec3_t point)
 }
 
 
-void CL_FixCvarCheats ()
-{
-	int			i;
-	cheatvar_t	*var;
-
-	if ( !strcmp(cl.configstrings[CS_MAXCLIENTS], "1") || !cl.configstrings[CS_MAXCLIENTS][0] )
-		return;		// single player can cheat
-
-	// find all the cvars if we haven't done it yet
-	if (!numcheatvars)
-	{
-		while (cheatvars[numcheatvars].name)
-		{
-			cheatvars[numcheatvars].var = Cvar_Get (cheatvars[numcheatvars].name, cheatvars[numcheatvars].value, 0);
-			numcheatvars++;
-		}
-	}
-
-	// make sure they are all set to the proper values
-	for (i=0, var = cheatvars ; i<numcheatvars ; i++, var++)
-		if ( strcmp (var->var->string, var->value) )
-			Cvar_Set (var->name, var->value);
-}
-
-
-void CL_SendCommand ()
-{
-	// get new key events
-	Sys_SendKeyEvents ();
-
-	// allow mice or other external controllers to add commands
-	IN_Commands ();
-
-	// process console commands
-	Cbuf_Execute ();
-
-	if(!cl.attractloop)			/// Berserker: не отменять читы для дёмок
-		CL_FixCvarCheats ();	// fix any cheating cvars
-
-	// send intentions now
-	CL_SendCmd ();
-
-	// resend a connection request if necessary
-	CL_CheckForResend ();
-}
-
-
 /*
 =================
 CL_PredictMovement
@@ -96290,6 +94749,7 @@ void CL_PredictMovement ()
 	int			i;
 	int			step;
 	int			oldz;
+	static int	last_step_frame = 0;
 
 	if (cls.state != ca_active)
 		return;
@@ -96318,7 +94778,7 @@ void CL_PredictMovement ()
 	}
 
 	// copy current state to pmove
-	Memset (&pm, 0, sizeof(pm));
+	memset (&pm, 0, sizeof(pm));
 	pm.trace = CL_PMTrace;
 	pm.pointcontents = CL_PMpointcontents;
 
@@ -96328,26 +94788,59 @@ void CL_PredictMovement ()
 
 	frame = 0;
 
-	// run frames
-	while (++ack < current)
+	if (cl_async->value)
 	{
-		frame = ack & (CMD_BACKUP-1);
-		cmd = &cl.cmds[frame];
+		// run frames
+		while (++ack <= current) // Changed '<' to '<=' cause current is our pending cmd
+		{
+			frame = ack & (CMD_BACKUP-1);
+			cmd = &cl.cmds[frame];
 
-		pm.cmd = *cmd;
-		Pmove (&pm);
+			if (!cmd->msec) // Ignore 'null' usercmd entries
+				continue;
 
-		// save for debug checking
-		VectorCopy (pm.s.origin, cl.predicted_origins[frame]);
+			pm.cmd = *cmd;
+			Pmove (&pm);
+
+			// save for debug checking
+			VectorCopy (pm.s.origin, cl.predicted_origins[frame]);
+		}
+
+		oldframe = (ack-2) & (CMD_BACKUP-1);
+		oldz = cl.predicted_origins[oldframe][2];
+		step = pm.s.origin[2] - oldz;
+
+		// TODO: Add Paril's step down fix here
+		if (last_step_frame != current && step > 63 && step < 160 && (pm.s.pm_flags & PMF_ON_GROUND) )
+		{
+			cl.predicted_step = step * 0.125;
+			cl.predicted_step_time = cls.realtime - cls.netFrameTime * 500;
+			last_step_frame = current;
+		}
 	}
-
-	oldframe = (ack-2) & (CMD_BACKUP-1);
-	oldz = cl.predicted_origins[oldframe][2];
-	step = pm.s.origin[2] - oldz;
-	if (step > 63 && step < 160 && (pm.s.pm_flags & PMF_ON_GROUND) )
+	else
 	{
-		cl.predicted_step = step * 0.125;
-		cl.predicted_step_time = cls.realtime - cls.frametime * 500;
+		// run frames
+		while (++ack < current)
+		{
+			frame = ack & (CMD_BACKUP-1);
+			cmd = &cl.cmds[frame];
+
+			pm.cmd = *cmd;
+			Pmove (&pm);
+
+			// save for debug checking
+			VectorCopy (pm.s.origin, cl.predicted_origins[frame]);
+		}
+
+		oldframe = (ack-2) & (CMD_BACKUP-1);
+		oldz = cl.predicted_origins[oldframe][2];
+		step = pm.s.origin[2] - oldz;
+		if (step > 63 && step < 160 && (pm.s.pm_flags & PMF_ON_GROUND) )
+		{
+			cl.predicted_step = step * 0.125;
+			cl.predicted_step_time = cls.realtime - cls.netFrameTime * 500;
+		}
 	}
 
 
@@ -96357,6 +94850,90 @@ void CL_PredictMovement ()
 	cl.predicted_origin[2] = pm.s.origin[2]*0.125;
 
 	VectorCopy (pm.viewangles, cl.predicted_angles);
+}
+
+
+void CL_FixCvarCheats ()
+{
+	int			i;
+	cheatvar_t	*var;
+
+	if ( !strcmp(cl.configstrings[CS_MAXCLIENTS], "1") || !cl.configstrings[CS_MAXCLIENTS][0] )
+		return;		// single player can cheat
+
+	// find all the cvars if we haven't done it yet
+	if (!numcheatvars)
+	{
+		while (cheatvars[numcheatvars].name)
+		{
+			cheatvars[numcheatvars].var = Cvar_Get (cheatvars[numcheatvars].name, cheatvars[numcheatvars].value, 0);
+			numcheatvars++;
+		}
+	}
+
+	// make sure they are all set to the proper values
+	for (i=0, var = cheatvars ; i<numcheatvars ; i++, var++)
+		if ( strcmp (var->var->string, var->value) )
+			Cvar_Set (var->name, var->value);
+}
+
+
+void CL_RefreshInputs ()
+{
+	// fetch results from server
+	CL_ReadPackets ();
+
+	// get new key events
+	Sys_SendKeyEvents ();
+
+	// allow mice or other external controllers to add commands
+	IN_Commands ();
+
+	// process console commands
+	Cbuf_Execute ();
+
+	// fix any cheating cvars
+	if (!cl.attractloop)		/// Berserker: не отменять читы для дёмок
+		CL_FixCvarCheats ();
+
+	// Update usercmd state
+	if (cls.state > ca_connecting)
+		CL_RefreshCmd ();
+	else
+		CL_RefreshMove ();
+}
+
+
+void CL_SendCommand_Async ()
+{
+	// send intentions now
+	CL_SendCmd_Async ();
+
+	// resend a connection request if necessary
+	CL_CheckForResend ();
+}
+
+
+void CL_SendCommand ()
+{
+	// get new key events
+	Sys_SendKeyEvents ();
+
+	// allow mice or other external controllers to add commands
+	IN_Commands ();
+
+	// process console commands
+	Cbuf_Execute ();
+
+	// fix any cheating cvars
+	if (!cl.attractloop)		/// Berserker: не отменять читы для дёмок
+		CL_FixCvarCheats ();
+
+	// send intentions now
+	CL_SendCmd ();
+
+	// resend a connection request if necessary
+	CL_CheckForResend ();
 }
 
 
@@ -96437,7 +95014,7 @@ float ParseSP3frames(model_t *mod, dsprite2_t *sprout, char *s, float *sc, int *
 			continue;
 		}
 
-		Memcpy(sprout->frames[i].name, token, strlen(token));
+		memcpy(sprout->frames[i].name, token, strlen(token));
 		sprout->frames[i].skin = GL_FindImage (sprout->frames[i].name, it_sprite, false, 0, false, 0);	/// !!! Для спрайтов не бывает бампа!!!
 		// не нашли, попробуем взять шкуру используя путь до спрайта
 		if (!sprout->frames[i].skin)
@@ -97150,7 +95727,7 @@ void CL_RegisterTEntModels ()
 						{
 							if(!b_stricmp(ZipCache[i].pak_name, pak->filename))
 							{
-								Memcpy(&pf, &ZipCache[i], sizeof(zipfile_t));		// Нашли уже открытый ZIP и загрузили его описатель в pf
+								memcpy(&pf, &ZipCache[i], sizeof(zipfile_t));		// Нашли уже открытый ZIP и загрузили его описатель в pf
 								goto clc;
 							}
 						}
@@ -97167,7 +95744,7 @@ void CL_RegisterTEntModels ()
 				strcpy(&ZipCache[slot].pak_name[0], pak->filename);	// Если не нашли zip в кэше, откроем его...
 				if (!PackFileOpen (&ZipCache[slot]))
 					Com_Error(ERR_FATAL, "Error opening pk2-file: %s", pak->filename);
-				Memcpy(&pf, &ZipCache[slot], sizeof(zipfile_t));
+				memcpy(&pf, &ZipCache[slot], sizeof(zipfile_t));
 				goto clc2;
 clc:			slot = i;
 clc2:			for(i=0; i<pf.gi.number_entry; i++)
@@ -97175,7 +95752,7 @@ clc2:			for(i=0; i<pf.gi.number_entry; i++)
 					if(pf.fi[i].size)
 					{
 						char	nam[256];
-						Memcpy(nam, pf.fi[i].name, 256);
+						memcpy(nam, pf.fi[i].name, 256);
 						if(!Q_strncasecmp(nam, "models/hud/", 11))
 						{
 							if(!Q_strcasecmp(nam+strlen(nam)-4, ".md2") || !Q_strcasecmp(nam+strlen(nam)-4, ".md3"))
@@ -97183,7 +95760,7 @@ clc2:			for(i=0; i<pf.gi.number_entry; i++)
 								model_t *model = R_RegisterModel(nam, 1, false);
 								if (model)
 									model->flags &= ~RF_DISTORT;
-								Memcpy(&pf, &ZipCache[slot], sizeof(zipfile_t));	// восстановим PF, ибо он портится при регистрации модели (вызов ZIP)
+								memcpy(&pf, &ZipCache[slot], sizeof(zipfile_t));	// восстановим PF, ибо он портится при регистрации модели (вызов ZIP)
 								Com_DPrintf("3D hud model: %s/%s\n", pf.pak_name, pf.fi[i].name);
 							}
 						}
@@ -97196,7 +95773,7 @@ clc2:			for(i=0; i<pf.gi.number_entry; i++)
 				for (i=0 ; i<pak->numfiles ; i++)
 				{
 					char	nam[256];
-					Memcpy(nam, pak->files[i].name, 256);
+					memcpy(nam, pak->files[i].name, 256);
 					if(!Q_strncasecmp(nam, "models/hud/", 11))
 					{
 						if(!Q_strcasecmp(nam+strlen(nam)-4, ".md2") || !Q_strcasecmp(nam+strlen(nam)-4, ".md3"))
@@ -97291,7 +95868,7 @@ void CL_LoadClientinfo (clientinfo_t *ci, char *s)
 	// isolate the player's name
 	strncpy(ci->name, s, sizeof(ci->name));
 	ci->name[sizeof(ci->name)-1] = 0;
-	t = strstr (s, "\\");
+	t = strchr (s, '\\');
 	if (t)
 	{
 		ci->name[t-s] = 0;
@@ -97305,7 +95882,7 @@ void CL_LoadClientinfo (clientinfo_t *ci, char *s)
 		Com_sprintf (skin_filename, sizeof(skin_filename), "players/male/grunt");
 		Com_sprintf (ci->iconname, sizeof(ci->iconname), "/players/male/grunt_i");
 		ci->model = R_RegisterModel (model_filename, 1, false);
-		Memset(ci->weaponmodel, 0, sizeof(ci->weaponmodel));
+		memset(ci->weaponmodel, 0, sizeof(ci->weaponmodel));
 		ci->weaponmodel[0] = R_RegisterModel (weapon_filename, 1, false);
 		ci->skin = R_RegisterSkin (skin_filename);
 		ci->bump = R_RegisterBump (skin_filename, ci->skin, ci->model);
@@ -97316,9 +95893,9 @@ void CL_LoadClientinfo (clientinfo_t *ci, char *s)
 	{
 		// isolate the model name
 		strcpy (model_name, s);
-		t = strstr(model_name, "/");
+		t = strchr(model_name, '/');
 		if (!t)
-			t = strstr(model_name, "\\");
+			t = strchr(model_name, '\\');
 		if (!t)
 			t = model_name;
 		*t = 0;
@@ -97477,41 +96054,6 @@ void CL_Clear3DHud()
 
 
 /*
-==================
-SCR_RunConsole
-
-Scroll it up or down
-==================
-*/
-void SCR_RunConsole ()
-{
-// decide on the height of the console
-	if (cls.key_dest == key_console)
-		scr_conlines = 0.5;		// half screen
-	else
-		scr_conlines = 0;				// none visible
-
-////	if (cl.attractloop || cin.pic[0])			/// Berserker: во время демо или показа картинки
-////		scr_con_current = scr_conlines = 0;		/// консоль НЕ ВИДНА!!!
-
-	if (scr_conlines < scr_con_current)
-	{
-		scr_con_current -= scr_conspeed->value*cls.frametime;
-		if (scr_conlines > scr_con_current)
-			scr_con_current = scr_conlines;
-
-	}
-	else if (scr_conlines > scr_con_current)
-	{
-		scr_con_current += scr_conspeed->value*cls.frametime;
-		if (scr_conlines < scr_con_current)
-			scr_con_current = scr_conlines;
-	}
-
-}
-
-
-/*
 =================
 S_SpatializeOrigin
 
@@ -97652,7 +96194,7 @@ channel_t *S_PickChannel(int entnum, int entchannel)
 		return NULL;
 
 	ch = &channels[first_to_die];
-	Memset (ch, 0, sizeof(*ch));
+	memset (ch, 0, sizeof(*ch));
 
     return ch;
 }
@@ -97849,7 +96391,7 @@ void S_WriteLinearBlastStereo16 ()
 }
 
 
-void S_TransferStereo16 (unsigned long *pbuf, int endtime)
+void S_TransferStereo16 (unsigned *pbuf, int endtime)
 {
 	int		lpos;
 	int		lpaintedtime;
@@ -97881,15 +96423,15 @@ void S_TransferStereo16 (unsigned long *pbuf, int endtime)
 
 void S_TransferPaintBuffer(int endtime)
 {
-//	int 	out_idx;
-//	int 	count;
-//	int 	out_mask;
-//	int 	*p;
-//	int 	step;
-//	int		val;
-	unsigned long *pbuf;
+	int 	out_idx;
+	int 	count;
+	int 	out_mask;
+	int 	*p;
+	int 	step;
+	int		val;
+	unsigned *pbuf;
 
-	pbuf = (unsigned long *)dma.buffer;
+	pbuf = (unsigned *)dma.buffer;
 
 	if (s_testsound->value)
 	{
@@ -97902,11 +96444,11 @@ void S_TransferPaintBuffer(int endtime)
 			paintbuffer[i].left = paintbuffer[i].right = sin((paintedtime+i)*0.1)*20000*256;
 	}
 
-//	if (dma.samplebits == 16 && dma.channels == 2)
-//	{	// optimized case
+	if (dma.samplebits == 16 && dma.channels == 2)
+	{	// optimized case
 		S_TransferStereo16 (pbuf, endtime);
-//	}
-/*	else
+	}
+	else
 	{	// general case
 		p = (int *) paintbuffer;
 		count = (endtime - paintedtime) * dma.channels;
@@ -97945,7 +96487,6 @@ void S_TransferPaintBuffer(int endtime)
 			}
 		}
 	}
-*/
 }
 
 
@@ -97987,7 +96528,7 @@ void S_PaintChannels(int endtime)
 		// clear the paint buffer
 		if (s_rawend < paintedtime)
 		{
-			Memset(paintbuffer, 0, (end - paintedtime) * sizeof(portable_samplepair_t));
+			memset(paintbuffer, 0, (end - paintedtime) * sizeof(portable_samplepair_t));
 		}
 		else
 		{	// copy from the streaming sound source
@@ -98074,9 +96615,6 @@ void S_Update_()
 	unsigned        endtime;
 	int				samps;
 
-	if (!sound_started || (!ActiveApp && s_mute_losefocus->value))
-		return;
-
 	SNDDMA_BeginPainting ();
 
 // Updates DMA time
@@ -98092,9 +96630,6 @@ void S_Update_()
 // mix ahead of current position
 	endtime = soundtime + s_mixahead->value * dma.speed;
 
-	// mix to an even submission block size
-	endtime = (endtime + dma.submission_chunk-1)
-		& ~(dma.submission_chunk-1);
 	samps = dma.samples >> (dma.channels-1);
 	if (endtime - soundtime > samps)
 		endtime = soundtime + samps;
@@ -98147,13 +96682,13 @@ void S_Update(vec3_t origin, vec3_t forward, vec3_t right, vec3_t up)
 			continue;
 		if (ch->autosound)
 		{	// autosounds are regenerated fresh each frame
-			Memset (ch, 0, sizeof(*ch));
+			memset (ch, 0, sizeof(*ch));
 			continue;
 		}
 		S_Spatialize(ch);         // respatialize channel
 		if (!ch->leftvol && !ch->rightvol)
 		{
-			Memset (ch, 0, sizeof(*ch));
+			memset (ch, 0, sizeof(*ch));
 			continue;
 		}
 	}
@@ -98186,6 +96721,159 @@ void S_Update(vec3_t origin, vec3_t forward, vec3_t right, vec3_t up)
 }
 
 
+void CL_Frame_Async (int msec)
+{
+	static int	packetDelta = 0;
+	static int	renderDelta = 0;
+	static int	miscDelta = 0;
+	bool		packetFrame = true;
+	bool		renderFrame = true;
+	bool		miscFrame = true;
+
+	// don't allow setting maxfps too low (or game could stop responding)
+	// don't allow too high, either
+	if (net_maxfps->modified)
+	{
+		Cvar_SetValue( "net_maxfps", ClampCvar( 10, 90, net_maxfps->value ));
+		net_maxfps->modified = false;
+	}
+	if (r_maxfps->modified)
+	{
+		Cvar_SetValue( "r_maxfps", ClampCvar( 10, 1000, r_maxfps->value ));
+		r_maxfps->modified = false;
+	}
+	if (con_maxfps->modified)
+	{
+		Cvar_SetValue( "con_maxfps", ClampCvar( 10, 200, con_maxfps->value ));
+		con_maxfps->modified = false;
+	}
+
+	packetDelta += msec;
+	renderDelta += msec;
+	miscDelta += msec;
+
+	// decide the simulation time
+	cls.netFrameTime = packetDelta * 0.001f;
+	cls.renderFrameTime = renderDelta * 0.001f;
+	cl.time += msec;
+	cls.realtime = curtime;
+
+	// Don't extrapolate too far ahead
+	if (cls.netFrameTime > FRAMETIME_MAX)
+		cls.netFrameTime = FRAMETIME_MAX;
+	if (cls.renderFrameTime > FRAMETIME_MAX)
+		cls.renderFrameTime = FRAMETIME_MAX;
+
+	if (!cl_timedemo->value)
+	{
+		float maxfps;
+
+		// Don't flood packets out while connecting
+		if (cls.state == ca_connected && packetDelta < 100)
+			packetFrame = false;
+
+		if (cls.state == ca_active && !cl_paused->value && !m_menudepth && ActiveApp)
+			maxfps = r_maxfps->value;
+		else
+			maxfps = con_maxfps->value;
+
+		if (packetDelta < 1000.0 / net_maxfps->value)
+			packetFrame = false;
+		else if (cls.netFrameTime == cls.renderFrameTime)
+			packetFrame = false;
+
+		if (renderDelta < 1000.0 / maxfps)
+			renderFrame = false;
+
+		// Stuff that only needs to run at 10FPS
+		if (miscDelta < 1000.0 / 10)
+			miscFrame = false;
+
+		if (!packetFrame && !renderFrame && !cls.forcePacket && !userinfo_modified)
+		{	// Pooy's CPU usage fix
+			if (cl_sleep->value || !ActiveApp)
+			{
+				int temptime = min( (1000.0 / net_maxfps->value - packetDelta), (1000.0 / maxfps - renderDelta) );
+				if (temptime > 1)
+					SDL_Delay (1);
+			} // end CPU usage fix
+			return;
+		}
+
+	}
+
+	// Update the inputs (keyboard, mouse, console)
+	if (packetFrame || renderFrame)
+		CL_RefreshInputs ();
+
+	if (cls.forcePacket || userinfo_modified)
+	{
+		packetFrame = true;
+		cls.forcePacket = false;
+	}
+
+	// Send a new command message to the server
+	if (packetFrame)
+	{
+		packetDelta = 0;
+		CL_SendCommand_Async ();
+	}
+
+	if (renderFrame)
+	{
+		renderDelta = 0;
+
+		if (miscFrame)
+		{
+			miscDelta = 0;
+
+			// Berserker: обновим клиентинфо всех клиентов при изменении цвара
+			if (cl_forcemymodel_modified)
+			{
+				int	cs_playerskins;
+				if (net_compatibility->value)
+					cs_playerskins = CS_PLAYERSKINS_Q2;
+				else
+					cs_playerskins = CS_PLAYERSKINS_BERS;
+				cl_forcemymodel_modified = false;
+				for (int i=0 ; i<MAX_CLIENTS ; i++)
+					if (cl.configstrings[cs_playerskins+i][0])
+						CL_ParseClientinfo (i);
+			}
+
+			// Allow rendering DLL change
+			VID_CheckChanges ();
+
+			// Let the mouse activate or deactivate
+			IN_Frame ();
+		}
+		// Predict all unacknowledged movements
+		CL_PredictMovement ();
+
+		if (!cl.refresh_prepped && cls.state == ca_active)
+			CL_PrepRefresh ();
+
+		// update the screen
+		if (host_speeds->value)
+			time_before_ref = Sys_Milliseconds ();
+		SCR_UpdateScreen ();
+		if (host_speeds->value)
+			time_after_ref = Sys_Milliseconds ();
+
+		// Update audio
+		S_Update (cl.refdef.vieworg, cl.v_forward, cl.v_right, cl.v_up);
+
+		// Advance local effects for next frame
+		CL_RunDLights ();
+		CL_RunLightStyles ();
+		SCR_RunCinematic ();
+		SCR_RunConsole ();
+
+///		cls.framecount++;	// not used?
+	}
+}
+
+
 void CL_Frame (int msec)
 {
 	static int	extratime;
@@ -98201,42 +96889,63 @@ void CL_Frame (int msec)
 	else
 		draw_emits = false;
 
+	if (cl_async->value && !cl_timedemo->value)
+	{
+		CL_Frame_Async (msec);
+		return;
+	}
+
 	extratime += msec;
+
+	// don't allow setting maxfps too low (or game could stop responding)
+	// don't allow too high, either
+	if (cl_maxfps->modified)
+	{
+		Cvar_SetValue( "cl_maxfps", ClampCvar( 10, 500, cl_maxfps->value ));
+		cl_maxfps->modified = false;
+	}
+	if (con_maxfps->modified)
+	{
+		Cvar_SetValue( "con_maxfps", ClampCvar( 10, 200, con_maxfps->value ));
+		con_maxfps->modified = false;
+	}
 
 	if (!cl_timedemo->value)
 	{
+		float maxfps;
+
 		if (cls.state == ca_connected && extratime < 100)
 			return;			// don't flood packets out while connecting
-		float	maxfps;
+
 		if (cls.state == ca_active && !cl_paused->value && !m_menudepth && ActiveApp)
 			maxfps = cl_maxfps->value;
 		else
 			maxfps = con_maxfps->value;
-		if (maxfps < 5) maxfps = 5;				// защита от нулевого значения, иначе зависание!
-		int ms = 1000/maxfps - extratime;
-		if (ms>0)
+
+		if (extratime < 1000.0 / maxfps)
 		{
-			if (cl_sleep->value)	// снижение загруженности CPU
-				SDL_Delay((Uint32)cl_sleep->value);
+			// Pooy's CPU usage fix
+			if (cl_sleep->value || !ActiveApp)
+			{
+				int temptime = 1000 / maxfps - extratime;
+				if (temptime > 1)
+					SDL_Delay (1);
+			} // end CPU usage fix
 			return;			// framerate is too high
 		}
 	}
 
-	// let the mouse activate or deactivate
-	IN_Frame ();
-
 	// decide the simulation time
-	cls.frametime = extratime/1000.0;
+	cls.netFrameTime = extratime/1000.0;
 	cl.time += extratime;
 	cls.realtime = curtime;
 
 	extratime = 0;
-	if (cls.frametime > (1.0 / 5))
-		cls.frametime = (1.0 / 5);
 
-	// if in the debugger last frame, don't timeout
-	if (msec > 5000)
-		cls.netchan.last_received = Sys_Milliseconds ();
+	if (cls.netFrameTime > (1.0 / 5))
+		cls.netFrameTime = (1.0 / 5);
+
+	cls.renderFrameTime = cls.netFrameTime;
 
 	// fetch results from server
 	CL_ReadPackets ();
@@ -98247,14 +96956,14 @@ void CL_Frame (int msec)
 	// predict all unacknowledged movements
 	CL_PredictMovement ();
 
-	int	cs_playerskins;
-	if (net_compatibility->value)
-		cs_playerskins = CS_PLAYERSKINS_Q2;
-	else
-		cs_playerskins = CS_PLAYERSKINS_BERS;
 	// Berserker: обновим клиентинфо всех клиентов при изменении цвара
 	if (cl_forcemymodel_modified)
 	{
+		int	cs_playerskins;
+		if (net_compatibility->value)
+			cs_playerskins = CS_PLAYERSKINS_Q2;
+		else
+			cs_playerskins = CS_PLAYERSKINS_BERS;
 		cl_forcemymodel_modified = false;
 		for (int i=0 ; i<MAX_CLIENTS ; i++)
 			if (cl.configstrings[cs_playerskins+i][0])
@@ -98263,6 +96972,8 @@ void CL_Frame (int msec)
 
 	// allow rendering DLL change
 	VID_CheckChanges ();
+	// let the mouse activate or deactivate
+	IN_Frame ();
 	if (!cl.refresh_prepped && cls.state == ca_active)
 		CL_PrepRefresh ();
 
@@ -98272,15 +96983,6 @@ void CL_Frame (int msec)
 	SCR_UpdateScreen ();
 	if (host_speeds->value)
 		time_after_ref = Sys_Milliseconds ();
-
-	// Berserker: если системная гамма изменена при запуске игры
-	// то установки своей гаммы до некоторого времени не работают. Пофиксим. Почему так, хз, особо не разбирался...
-	if(!cls.disable_screen)
-	{
-		gamma_initialized_++;
-		if(gamma_initialized_ == 0)
-			SetGamma(vid_gamma->value, vid_bright->value, vid_contrast->value);
-	}
 
 	// update audio
 	S_Update (cl.refdef.vieworg, cl.v_forward, cl.v_right, cl.v_up);
@@ -98295,567 +96997,15 @@ void CL_Frame (int msec)
 }
 
 
-#ifdef ENABLE_ASM
-#ifdef _MSC_VER
-void MMX_Memcpy8B( void *dest, const void *src, size_t count )
-{
-
-	_asm
-	{
-		mov esi, src
-		mov edi, dest
-		mov ecx, count
-		shr ecx, 3			// 8 bytes per iteration
-loop1:
-		movq mm1, [ESI]		// Read in source data
-		movntq [EDI], mm1	// Non-temporal stores
-
-		add esi, 8
-		add edi, 8
-		dec ecx
-		jnz loop1
-		emms
-	}
-}
-#endif
-#endif
-
-#ifdef ENABLE_ASM
-#ifdef _MSC_VER
-void MMX_Memcpy64B( void *dest, const void *src, size_t count )
-{
-	_asm
-	{
-		mov esi, src
-		mov edi, dest
-		mov ecx, count
-		shr ecx, 6			// 64 bytes per iteration
-loop1:
-		prefetchnta 64[ESI]	// Prefetch next loop, non-temporal
-		prefetchnta 96[ESI]
-
-		movq mm1, [ESI]		// Read in source data
-		movq mm2, 8[ESI]
-		movq mm3, 16[ESI]
-		movq mm4, 24[ESI]
-		movq mm5, 32[ESI]
-		movq mm6, 40[ESI]
-		movq mm7, 48[ESI]
-		movq mm0, 56[ESI]
-
-		movntq [EDI], mm1	// Non-temporal stores
-		movntq 8[EDI], mm2
-		movntq 16[EDI], mm3
-		movntq 24[EDI], mm4
-		movntq 32[EDI], mm5
-		movntq 40[EDI], mm6
-		movntq 48[EDI], mm7
-		movntq 56[EDI], mm0
-
-		add esi, 64
-		add edi, 64
-		dec ecx
-		jnz loop1
-		emms
-	}
-}
-#endif
-#endif
-
-#ifdef ENABLE_ASM
-#ifdef _MSC_VER
-void MMX_Memcpy2kB( void *dest, const void *src, size_t count )
-{
-	byte buf[2048];
-	byte *tbuf = &buf[0];
-	__asm
-	{
-		push ebx
-		mov esi, src
-		mov ebx, count
-		shr ebx, 11				// 2048 bytes at a time
-		mov edi, dest
-loop2k:
-		push edi				// copy 2k into temporary buffer
-		mov edi, tbuf
-		mov ecx, 32
-loopMemToL1:
-		prefetchnta 64[ESI]		// Prefetch next loop, non-temporal
-		prefetchnta 96[ESI]
-
-		movq mm1, [ESI]			// Read in source data
-		movq mm2, 8[ESI]
-		movq mm3, 16[ESI]
-		movq mm4, 24[ESI]
-		movq mm5, 32[ESI]
-		movq mm6, 40[ESI]
-		movq mm7, 48[ESI]
-		movq mm0, 56[ESI]
-
-		movq [EDI], mm1			// Store into L1
-		movq 8[EDI], mm2
-		movq 16[EDI], mm3
-		movq 24[EDI], mm4
-		movq 32[EDI], mm5
-		movq 40[EDI], mm6
-		movq 48[EDI], mm7
-		movq 56[EDI], mm0
-		add esi, 64
-		add edi, 64
-		dec ecx
-		jnz loopMemToL1
-
-		pop edi					// Now copy from L1 to system memory
-		push esi
-		mov esi, tbuf
-		mov ecx, 32
-loopL1ToMem:
-		movq mm1, [ESI]			// Read in source data from L1
-		movq mm2, 8[ESI]
-		movq mm3, 16[ESI]
-		movq mm4, 24[ESI]
-		movq mm5, 32[ESI]
-		movq mm6, 40[ESI]
-		movq mm7, 48[ESI]
-		movq mm0, 56[ESI]
-
-		movntq [EDI], mm1		// Non-temporal stores
-		movntq 8[EDI], mm2
-		movntq 16[EDI], mm3
-		movntq 24[EDI], mm4
-		movntq 32[EDI], mm5
-		movntq 40[EDI], mm6
-		movntq 48[EDI], mm7
-		movntq 56[EDI], mm0
-
-		add esi, 64
-		add edi, 64
-		dec ecx
-		jnz loopL1ToMem
-
-		pop esi					// Do next 2k block
-		dec ebx
-		jnz loop2k
-		pop ebx
-		emms
-	}
-}
-#endif
-#endif
-
-#ifdef ENABLE_ASM
-#ifdef _MSC_VER
-void MMX_Memcpy( void *dest0, const void *src0, size_t count0 )
-{
-	// if copying more than 16 bytes and we can copy 8 byte aligned
-	if ( count0 > 16 && !( ( (int)dest0 ^ (int)src0 ) & 7 ) )
-	{
-		byte *dest = (byte *)dest0;
-		byte *src = (byte *)src0;
-		// copy up to the first 8 byte aligned boundary
-		int count = ((int)dest) & 7;
-		memcpy( dest, src, count );
-		dest += count;
-		src += count;
-		count = count0 - count;
-		// if there are multiple blocks of 2kB
-		if ( count & ~4095 )
-		{
-			MMX_Memcpy2kB( dest, src, count );
-			src += (count & ~2047);
-			dest += (count & ~2047);
-			count &= 2047;
-		}
-		// if there are blocks of 64 bytes
-		if ( count & ~63 )
-		{
-			MMX_Memcpy64B( dest, src, count );
-			src += (count & ~63);
-			dest += (count & ~63);
-			count &= 63;
-		}
-
-		// if there are blocks of 8 bytes
-		if ( count & ~7 )
-		{
-			MMX_Memcpy8B( dest, src, count );
-			src += (count & ~7);
-			dest += (count & ~7);
-			count &= 7;
-		}
-		// copy any remaining bytes
-		memcpy( dest, src, count );
-	}
-	else
-	{
-		// use the regular one if we cannot copy 8 byte aligned
-		memcpy( dest0, src0, count0 );
-	}
-}
-#endif
-#endif
-
-
-// Very optimized memcpy() routine for all AMD Athlon and Duron family.
-// This code uses any of FOUR different basic copy methods, depending
-// on the transfer size.
-// NOTE:  Since this code uses MOVNTQ (also known as "Non-Temporal MOV" or
-// "Streaming Store"), and also uses the software prefetchnta instructions,
-// be sure you're running on Athlon/Duron or other recent CPU before calling!
-
-#define TINY_BLOCK_COPY 64       // upper limit for movsd type copy
-// The smallest copy uses the X86 "movsd" instruction, in an optimized
-// form which is an "unrolled loop".
-
-#define IN_CACHE_COPY 64 * 1024  // upper limit for movq/movq copy w/SW prefetch
-// Next is a copy that uses the MMX registers to copy 8 bytes at a time,
-// also using the "unrolled loop" optimization.   This code uses
-// the software prefetch instruction to get the data into the cache.
-
-#define UNCACHED_COPY 197 * 1024 // upper limit for movq/movntq w/SW prefetch
-// For larger blocks, which will spill beyond the cache, it's faster to
-// use the Streaming Store instruction MOVNTQ.   This write instruction
-// bypasses the cache and writes straight to main memory.  This code also
-// uses the software prefetch instruction to pre-read the data.
-// USE 64 * 1024 FOR THIS VALUE IF YOU'RE ALWAYS FILLING A "CLEAN CACHE"
-
-#define BLOCK_PREFETCH_COPY  infinity // no limit for movq/movntq w/block prefetch
-#define CACHEBLOCK 80h // number of 64-byte blocks (cache lines) for block prefetch
-// For the largest size blocks, a special technique called Block Prefetch
-// can be used to accelerate the read operations.   Block Prefetch reads
-// one address per cache line, for a series of cache lines, in a short loop.
-// This is faster than using software prefetch.  The technique is great for
-// getting maximum read bandwidth, especially in DDR memory systems.
-
-#ifdef ENABLE_ASM
-#ifdef _MSC_VER
-void AMD_Memcpy( void *dest, const void *src, size_t n )
-{
-	__asm
-	{
-		mov		ecx, [n]					// number of bytes to copy
-		mov		edi, [dest]					// destination
-		mov		esi, [src]					// source
-		mov		ebx, ecx					// keep a copy of count
-
-		cld
-		cmp		ecx, TINY_BLOCK_COPY
-		jb		$memcpy_ic_3				// tiny? skip mmx copy
-
-		cmp		ecx, 32*1024				// don't align between 32k-64k because
-		jbe		$memcpy_do_align			//  it appears to be slower
-		cmp		ecx, 64*1024
-		jbe		$memcpy_align_done
-$memcpy_do_align:
-		mov		ecx, 8						// a trick that's faster than rep movsb...
-		sub		ecx, edi					// align destination to qword
-		and		ecx, 111b					// get the low bits
-		sub		ebx, ecx					// update copy count
-		neg		ecx							// set up to jump into the array
-		add		ecx, offset $memcpy_align_done
-		jmp		ecx							// jump to array of movsb's
-
-align 4
-		movsb
-		movsb
-		movsb
-		movsb
-		movsb
-		movsb
-		movsb
-		movsb
-
-$memcpy_align_done:						// destination is dword aligned
-		mov		ecx, ebx					// number of bytes left to copy
-		shr		ecx, 6						// get 64-byte block count
-		jz		$memcpy_ic_2				// finish the last few bytes
-
-		cmp		ecx, IN_CACHE_COPY/64		// too big 4 cache? use uncached copy
-		jae		$memcpy_uc_test
-
-// This is small block copy that uses the MMX registers to copy 8 bytes
-// at a time.  It uses the "unrolled loop" optimization, and also uses
-// the software prefetch instruction to get the data into the cache.
-align 16
-$memcpy_ic_1:							// 64-byte block copies, in-cache copy
-
-		prefetchnta [esi + (200*64/34+192)]	// start reading ahead
-
-		movq	mm0, [esi+0]				// read 64 bits
-		movq	mm1, [esi+8]
-		movq	[edi+0], mm0				// write 64 bits
-		movq	[edi+8], mm1				//    note:  the normal movq writes the
-		movq	mm2, [esi+16]				//    data to cache; a cache line will be
-		movq	mm3, [esi+24]				//    allocated as needed, to store the data
-		movq	[edi+16], mm2
-		movq	[edi+24], mm3
-		movq	mm0, [esi+32]
-		movq	mm1, [esi+40]
-		movq	[edi+32], mm0
-		movq	[edi+40], mm1
-		movq	mm2, [esi+48]
-		movq	mm3, [esi+56]
-		movq	[edi+48], mm2
-		movq	[edi+56], mm3
-
-		add		esi, 64						// update source pointer
-		add		edi, 64						// update destination pointer
-		dec		ecx							// count down
-		jnz		$memcpy_ic_1				// last 64-byte block?
-
-$memcpy_ic_2:
-		mov		ecx, ebx					// has valid low 6 bits of the byte count
-$memcpy_ic_3:
-		shr		ecx, 2						// dword count
-		and		ecx, 1111b					// only look at the "remainder" bits
-		neg		ecx							// set up to jump into the array
-		add		ecx, offset $memcpy_last_few
-		jmp		ecx							// jump to array of movsd's
-
-$memcpy_uc_test:
-		cmp		ecx, UNCACHED_COPY/64		// big enough? use block prefetch copy
-		jae		$memcpy_bp_1
-
-$memcpy_64_test:
-		or		ecx, ecx					// tail end of block prefetch will jump here
-		jz		$memcpy_ic_2				// no more 64-byte blocks left
-
-// For larger blocks, which will spill beyond the cache, it's faster to
-// use the Streaming Store instruction MOVNTQ.   This write instruction
-// bypasses the cache and writes straight to main memory.  This code also
-// uses the software prefetch instruction to pre-read the data.
-align 16
-$memcpy_uc_1:							// 64-byte blocks, uncached copy
-
-		prefetchnta [esi + (200*64/34+192)]	// start reading ahead
-
-		movq	mm0,[esi+0]					// read 64 bits
-		add		edi,64						// update destination pointer
-		movq	mm1,[esi+8]
-		add		esi,64						// update source pointer
-		movq	mm2,[esi-48]
-		movntq	[edi-64], mm0				// write 64 bits, bypassing the cache
-		movq	mm0,[esi-40]				//    note: movntq also prevents the CPU
-		movntq	[edi-56], mm1				//    from READING the destination address
-		movq	mm1,[esi-32]				//    into the cache, only to be over-written
-		movntq	[edi-48], mm2				//    so that also helps performance
-		movq	mm2,[esi-24]
-		movntq	[edi-40], mm0
-		movq	mm0,[esi-16]
-		movntq	[edi-32], mm1
-		movq	mm1,[esi-8]
-		movntq	[edi-24], mm2
-		movntq	[edi-16], mm0
-		dec		ecx
-		movntq	[edi-8], mm1
-		jnz		$memcpy_uc_1				// last 64-byte block?
-
-		jmp		$memcpy_ic_2				// almost done
-
-// For the largest size blocks, a special technique called Block Prefetch
-// can be used to accelerate the read operations.   Block Prefetch reads
-// one address per cache line, for a series of cache lines, in a short loop.
-// This is faster than using software prefetch, in this case.
-// The technique is great for getting maximum read bandwidth,
-// especially in DDR memory systems.
-$memcpy_bp_1:							// large blocks, block prefetch copy
-
-		cmp		ecx, CACHEBLOCK				// big enough to run another prefetch loop?
-		jl		$memcpy_64_test				// no, back to regular uncached copy
-
-		mov		eax, CACHEBLOCK / 2			// block prefetch loop, unrolled 2X
-		add		esi, CACHEBLOCK * 64		// move to the top of the block
-align 16
-$memcpy_bp_2:
-		mov		edx, [esi-64]				// grab one address per cache line
-		mov		edx, [esi-128]				// grab one address per cache line
-		sub		esi, 128					// go reverse order
-		dec		eax							// count down the cache lines
-		jnz		$memcpy_bp_2				// keep grabbing more lines into cache
-
-		mov		eax, CACHEBLOCK				// now that it's in cache, do the copy
-align 16
-$memcpy_bp_3:
-		movq	mm0, [esi   ]				// read 64 bits
-		movq	mm1, [esi+ 8]
-		movq	mm2, [esi+16]
-		movq	mm3, [esi+24]
-		movq	mm4, [esi+32]
-		movq	mm5, [esi+40]
-		movq	mm6, [esi+48]
-		movq	mm7, [esi+56]
-		add		esi, 64						// update source pointer
-		movntq	[edi   ], mm0				// write 64 bits, bypassing cache
-		movntq	[edi+ 8], mm1				//    note: movntq also prevents the CPU
-		movntq	[edi+16], mm2				//    from READING the destination address
-		movntq	[edi+24], mm3				//    into the cache, only to be over-written,
-		movntq	[edi+32], mm4				//    so that also helps performance
-		movntq	[edi+40], mm5
-		movntq	[edi+48], mm6
-		movntq	[edi+56], mm7
-		add		edi, 64						// update dest pointer
-
-		dec		eax							// count down
-
-		jnz		$memcpy_bp_3				// keep copying
-		sub		ecx, CACHEBLOCK				// update the 64-byte block count
-		jmp		$memcpy_bp_1				// keep processing chunks
-
-// The smallest copy uses the X86 "movsd" instruction, in an optimized
-// form which is an "unrolled loop".   Then it handles the last few bytes.
-align 4
-		movsd
-		movsd								// perform last 1-15 dword copies
-		movsd
-		movsd
-		movsd
-		movsd
-		movsd
-		movsd
-		movsd
-		movsd								// perform last 1-7 dword copies
-		movsd
-		movsd
-		movsd
-		movsd
-		movsd
-		movsd
-
-$memcpy_last_few:						// dword aligned from before movsd's
-		mov		ecx, ebx					// has valid low 2 bits of the byte count
-		and		ecx, 11b					// the last few cows must come home
-		jz		$memcpy_final				// no more, let's leave
-		rep		movsb						// the last 1, 2, or 3 bytes
-
-$memcpy_final:
-		emms								// clean up the MMX state
-		sfence								// flush the write buffer
-		mov		eax, [dest]					// ret value = destination pointer
-	}
-}
-#endif
-#endif
-
-
-#ifdef ENABLE_ASM
-#ifdef _MSC_VER
-void MMX_Memset( void* dest0, const int val, const size_t count0 )
-{
-	union
-	{
-		byte	bytes[8];
-		WORD	words[4];
-		DWORD	dwords[2];
-	} dat;
-
-	byte *dest = (byte *)dest0;
-	int count = count0;
-
-	while( count > 0 && (((int)dest) & 7) )
-	{
-		*dest = val;
-		dest++;
-		count--;
-	}
-	if ( !count )
-		return;
-
-	dat.bytes[0] = val;
-	dat.bytes[1] = val;
-	dat.words[1] = dat.words[0];
-	dat.dwords[1] = dat.dwords[0];
-
-	if ( count >= 64 )
-	{
-		__asm
-		{
-			mov edi, dest
-			mov ecx, count
-			shr ecx, 6		// 64 bytes per iteration
-			movq mm1, dat	// Read in source data
-			movq mm2, mm1
-			movq mm3, mm1
-			movq mm4, mm1
-			movq mm5, mm1
-			movq mm6, mm1
-			movq mm7, mm1
-			movq mm0, mm1
-loop1:
-			movntq 0[EDI], mm1	// Non-temporal stores
-			movntq 8[EDI], mm2
-			movntq 16[EDI], mm3
-			movntq 24[EDI], mm4
-			movntq 32[EDI], mm5
-			movntq 40[EDI], mm6
-			movntq 48[EDI], mm7
-			movntq 56[EDI], mm0
-
-			add edi, 64
-			dec ecx
-			jnz loop1
-		}
-		dest += ( count & ~63 );
-		count &= 63;
-	}
-
-	if ( count >= 8 )
-	{
-		__asm
-		{
-			mov edi, dest
-			mov ecx, count
-			shr ecx, 3		// 8 bytes per iteration
-			movq mm1, dat	// Read in source data
-			loop2:
-			movntq 0[EDI], mm1	// Non-temporal stores
-
-			add edi, 8
-			dec ecx
-			jnz loop2
-		}
-		dest += (count & ~7);
-		count &= 7;
-	}
-
-	while( count > 0 )
-	{
-		*dest = val;
-		dest++;
-		count--;
-	}
-
-	__asm
-	{
-		emms
-	}
-}
-#endif
-#endif
-
 int main(int argc, char *argv[])
 {
-    SDL_Event	ev;
 	int			time, oldtime;
 
-	// Cgg - max number of open files at the crt level
-	//_setmaxstdio(2048);
-	// !Cgg
-
 	BuildSqrtTable();				// Ставим в самом начале, т.к. может понадобиться fastsqrt...
-#ifdef ENABLE_ASM
-	M_SelectMath(0, 0, true, true);	// set default progs
-#else
-	M_SelectMath(0, true, true);
-#endif
-
-	r1q2_title[0] = /*r1q2_down_title[0] = */0;
+	M_SelectMath(0, true, true);	// set default progs
 
 	Common_Init (argc, argv);
-#ifdef ENABLE_ASM
-	M_SelectMath(16, 1024*1024, false, true);	// fast select progs
-#else
-	M_SelectMath(16, false, true);
-#endif
+	M_SelectMath(16, false, true);	// fast select progs
 
 /*
 	if (dedicated && dedicated->value)
@@ -98868,24 +97018,20 @@ int main(int argc, char *argv[])
 	/* main window message loop */
 	while (1)
 	{
-		// if at a full screen console, don't update unless needed
-		if (Minimized || (dedicated && dedicated->value) )
-		{
-			SDL_Delay (1);
-		}
-
-		while (SDL_PollEvent (&ev))
-		{
-			SDL_EventProc (&ev);
-		}
-
-		do
+		// DarkOne's CPU usage fix
+		while (1)
 		{
 			sys_time = Sys_Milliseconds ();
 			time = sys_time - oldtime;
-		} while (time < 1);
+			if (time > 0) break;
+#ifdef _WIN32
+			Sleep (0); // may also use Sleep(1); to free more CPU, but it can lower your fps
+#else
+			// POSIX equivalent of WIN32 Sleep(0)
+			sched_yield ();
+#endif
+		}
 
-		//_controlfp( _PC_24, _MCW_PC );
 		Common_Frame (time);
 
 		oldtime = sys_time;

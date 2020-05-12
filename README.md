@@ -8,22 +8,17 @@ It is currently known to compile and run on Linux and Windows.
 ### Building on Linux
 
 The makefile is provided in the root of this source tree, which should,
-provided you have all needed libraries setup, produce "berserker"
-executable file and game logic library "libgame.so". These libraries are:
+provided you have all needed libraries setup, produce "berserkerq2"
+executable file and game logic library "game.so". These libraries are:
 
-libjpeg8  
-libpng (v1.2.* or compatible)  
+libjpeg (v8)  
+libpng  
 libogg  
 libvorbis  
 libvorbisfile  
-SDL2  
-zlib
-
-Please note that you must install 32-bit versions of these libraries
-because 64-bit issues are yet to be resolved. Depending on your
-environment, you may need to make minor adjustments to the makefile
-or your environment (eg. 64-bit Ubuntu doesn't create proper symlinks
-to 32-bit libraries).
+SDL2 (v2.0.4 or newer recommended)  
+zlib  
+libminizip
 
 Code::Blocks project files are also provided.
 
@@ -44,6 +39,11 @@ FILE pak0.pak
 FILE pak1.pak  
 FILE pak2.pak  
 
+If you have original Quake II CD, the data can be found in Install/Data/baseq2. In addition to
+the data on the CD, you will need the data from the official Quake II 3.20 patch, which you can get from
+http://deponie.yamagi.org/quake2/idstuff/q2-3.20-x86-full-ctf.exe
+The content can be extracted using any utility for working with ZIP files.
+
 Make a distintctive folder where you want to run Berserker from. The folder must be
 writable, so somewhere under home folder should do for Linux users. Inside it, create
 baseq2 folder in which you put the above mentioned files.
@@ -58,8 +58,8 @@ file access on Linux systems.
 Now, you just need to put compiled executable files in their places:  
 (assuming Quake2 is the folder where you put the data)
 
-berserker or Berserker.exe -> Quake2  
-libgame.so or Game.dll -> Quake2/baseq2
+berserkerq2 or berserkerq2.exe -> Quake2  
+game.so or game.dll -> Quake2/baseq2
 
 Finally, you can run the game. Make sure it's executed from its own directory so it can find the data.
 
